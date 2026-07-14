@@ -2,189 +2,263 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-SpectrumFile = "/Users/tony/Desktop/Bowshock-Xray/Post-Processing/XraySpectrumTest/Ostar_mhd-nemo-dep_d2n0128l3_Optical_1.613175e+02.txt"
-CatalogFile  = "/Users/tony/Desktop/Bowshock-Xray/Post-Processing/XraySpectrumTest/Ostar_mhd-nemo-dep_d2n0128l3_LineCatalog_Optical.txt"
 
-OutDir = "/Users/tony/Desktop/Bowshock-Xray/Post-Processing/XraySpectrumTest"
-Filename = "OpticalSpectrum_with_lines"
+# ============================================================
+# Input and output settings
+# ============================================================
 
-match_tolerance = 2.0
-max_labels = 60
-min_peak_separation = 2
-peak_prominence_factor = 1.01
-
-
-def read_line_catalog(catalog_file):
-    catalog = []
-
-    with open(catalog_file, "r") as f:
-        for line in f:
-            line = line.strip()
-
-            if not line or line.startswith("#") or line.startswith("Spectral line") or line.startswith("-"):
-                continue
-
-            parts = line.split()
-
-            try:
-                catalog.append({
-                    "ion": f"{parts[0]} {parts[1]}",
-                    "wavelength": float(parts[2]),
-                    "energy": float(parts[3]),
-                    "avalue": float(parts[4]),
-                    "text": line
-                })
-            except Exception:
-                continue
-
-    return catalog
-
-
-def find_spectrum_peaks(wavelength, spectrum, min_separation=2, prominence_factor=1.01):
-    peaks = []
-
-    for i in range(1, len(spectrum) - 1):
-
-        if spectrum[i] > spectrum[i - 1] and spectrum[i] > spectrum[i + 1]:
-
-            i1 = max(0, i - min_separation)
-            i2 = min(len(spectrum), i + min_separation + 1)
-
-            local_region = np.concatenate(
-                (spectrum[i1:i], spectrum[i + 1:i2])
-            )
-
-            local_continuum = np.median(local_region)
-
-            if local_continuum > 0.0 and spectrum[i] / local_continuum >= prominence_factor:
-                peaks.append(i)
-
-    return np.array(peaks, dtype=int)
-
-
-def match_peaks_to_catalog(wavelength, spectrum, peak_indices, catalog, tolerance):
-    matches = []
-
-    catalog_wvl = np.array([line["wavelength"] for line in catalog])
-
-    for idx in peak_indices:
-        peak_wvl = wavelength[idx]
-        peak_lum = spectrum[idx]
-
-        nearest_idx = np.argmin(np.abs(catalog_wvl - peak_wvl))
-        best_line = catalog[nearest_idx]
-        best_sep = abs(best_line["wavelength"] - peak_wvl)
-
-        if best_sep <= tolerance:
-            matches.append({
-                "peak_wavelength": peak_wvl,
-                "peak_luminosity": peak_lum,
-                "catalog_ion": best_line["ion"],
-                "catalog_wavelength": best_line["wavelength"],
-                "catalog_energy": best_line["energy"],
-                "catalog_avalue": best_line["avalue"],
-                "separation": best_sep,
-                "catalog_entry": best_line["text"]
-            })
-
-    return matches
-
-
-wavelength, spectrum = np.loadtxt(SpectrumFile, unpack=True)
-catalog = read_line_catalog(CatalogFile)
-
-peak_indices = find_spectrum_peaks(
-    wavelength,
-    spectrum,
-    min_separation=min_peak_separation,
-    prominence_factor=peak_prominence_factor
+SpectrumFile = (
+    "/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum/WR140/"
+    "wr140_NEMO_d07e13_d2l6n128_Spectrum_NoFB_1.244585e+06.txt"
 )
 
-matches = match_peaks_to_catalog(
-    wavelength,
-    spectrum,
-    peak_indices,
-    catalog,
-    tolerance=match_tolerance
+OutDir = (
+    "/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum/WR140/"
+    "XraySpectrum/WR140"
 )
 
-matches = sorted(matches, key=lambda x: x["peak_luminosity"], reverse=True)
+Filename = "WR140_Xray_Photon_Flux"
 
-matched_file = os.path.join(OutDir, f"{Filename}_matched_lines.txt")
 
-with open(matched_file, "w") as f:
-    f.write(
-        "# Peak_wavelength[A] "
-        "Peak_Lambda[erg s^-1 A^-1] "
-        "Ion "
-        "Catalog_wavelength[A] "
-        "Energy[keV] "
-        "A-value "
-        "Separation[A] "
-        "Catalog_entry\n"
+# ============================================================
+# Physical constants
+# ============================================================
+
+h = 6.62607015e-27          # Planck constant [erg s]
+c = 2.99792458e10           # Speed of light [cm s^-1]
+pc_to_cm = 3.085677581e18   # Parsec to cm
+angstrom_to_cm = 1.0e-8     # Angstrom to cm
+
+
+# ============================================================
+# Distance to WR 140
+# ============================================================
+
+distance_pc = 1518.0
+distance_cm = distance_pc * pc_to_cm
+
+
+# ============================================================
+# Read spectrum
+#
+# Expected input columns:
+# wavelength [Angstrom]
+# L_lambda   [erg s^-1 Angstrom^-1]
+# ============================================================
+
+wavelength, L_lambda = np.loadtxt(
+    SpectrumFile,
+    unpack=True
+)
+
+
+# ============================================================
+# Remove invalid data
+# ============================================================
+
+valid = (
+    np.isfinite(wavelength)
+    & np.isfinite(L_lambda)
+    & (wavelength > 0.0)
+)
+
+wavelength = wavelength[valid]
+L_lambda = L_lambda[valid]
+
+if wavelength.size < 2:
+    raise ValueError(
+        "The input spectrum must contain at least two valid wavelength points."
     )
 
-    for m in matches:
-        f.write(
-            f"{m['peak_wavelength']:.8e} "
-            f"{m['peak_luminosity']:.8e} "
-            f"{m['catalog_ion']} "
-            f"{m['catalog_wavelength']:.8e} "
-            f"{m['catalog_energy']:.8e} "
-            f"{m['catalog_avalue']:.8e} "
-            f"{m['separation']:.8e} "
-            f"{m['catalog_entry']}\n"
-        )
+
+# Sort by increasing wavelength
+sort_index = np.argsort(wavelength)
+
+wavelength = wavelength[sort_index]
+L_lambda = L_lambda[sort_index]
 
 
-fig, ax = plt.subplots(figsize=(10, 5))
+# ============================================================
+# Convert luminosity spectrum to energy flux spectrum
+#
+# F_lambda = L_lambda / (4 pi d^2)
+#
+# Unit:
+# erg cm^-2 s^-1 Angstrom^-1
+# ============================================================
 
-ax.set_xlabel(r"Wavelength [$\AA$]", fontsize=12)
-ax.set_ylabel(r"$L_\lambda$ [erg s$^{-1}$ $\AA^{-1}$]", fontsize=12)
+flux_lambda = (
+    L_lambda
+    / (4.0 * np.pi * distance_cm**2)
+)
+
+
+# ============================================================
+# Convert energy flux to photon flux
+#
+# Photon energy:
+#
+# E_photon = h c / lambda
+#
+# Photon flux:
+#
+# N_lambda = F_lambda / E_photon
+#          = F_lambda lambda / (h c)
+#
+# Since wavelength is supplied in Angstrom:
+#
+# lambda_cm = wavelength * 1e-8
+#
+# Unit:
+# photons cm^-2 s^-1 Angstrom^-1
+# ============================================================
+
+wavelength_cm = wavelength * angstrom_to_cm
+
+photon_flux = (
+    flux_lambda
+    * wavelength_cm
+    / (h * c)
+)
+
+
+# ============================================================
+# Integrated quantities over the wavelength range
+# ============================================================
+
+integrated_energy_flux = np.trapz(
+    flux_lambda,
+    wavelength
+)
+
+integrated_photon_flux = np.trapz(
+    photon_flux,
+    wavelength
+)
+
+integrated_luminosity = np.trapz(
+    L_lambda,
+    wavelength
+)
+
+
+# ============================================================
+# Create output directory
+# ============================================================
+
+os.makedirs(
+    OutDir,
+    exist_ok=True
+)
+
+
+# ============================================================
+# Save calculated spectrum
+# ============================================================
+
+OutputSpectrumFile = os.path.join(
+    OutDir,
+    f"{Filename}.txt"
+)
+
+output_data = np.column_stack(
+    (
+        wavelength,
+        L_lambda,
+        flux_lambda,
+        photon_flux
+    )
+)
+
+header = (
+    "Wavelength[A] "
+    "L_lambda[erg_s^-1_A^-1] "
+    "F_lambda[erg_cm^-2_s^-1_A^-1] "
+    "Photon_flux[photons_cm^-2_s^-1_A^-1]\n"
+    f"Distance = {distance_pc:.2f} pc\n"
+    f"Integrated luminosity = "
+    f"{integrated_luminosity:.8e} erg s^-1\n"
+    f"Integrated energy flux = "
+    f"{integrated_energy_flux:.8e} erg cm^-2 s^-1\n"
+    f"Integrated photon flux = "
+    f"{integrated_photon_flux:.8e} photons cm^-2 s^-1"
+)
+
+np.savetxt(
+    OutputSpectrumFile,
+    output_data,
+    fmt="%.10e",
+    header=header
+)
+
+
+# ============================================================
+# Plot photon flux spectrum
+# ============================================================
+
+positive = (
+    np.isfinite(photon_flux)
+    & (photon_flux > 0.0)
+)
+
+if not np.any(positive):
+    raise ValueError(
+        "The calculated photon flux contains no positive values, "
+        "so it cannot be plotted on a logarithmic y-axis."
+    )
+
+
+fig, ax = plt.subplots(
+    figsize=(10, 5)
+)
 
 ax.plot(
-    wavelength,
-    spectrum,
+    wavelength[positive],
+    photon_flux[positive],
     color="green",
     linewidth=1.4,
-    label="Spectrum"
+    label="WR 140 photon flux"
+)
+
+ax.set_xlabel(
+    r"Wavelength [$\AA$]",
+    fontsize=12
+)
+
+ax.set_ylabel(
+    r"$N_\lambda$ "
+    r"[photons cm$^{-2}$ s$^{-1}$ $\AA^{-1}$]",
+    fontsize=12
 )
 
 ax.set_yscale("log")
 
-positive_spectrum = spectrum[spectrum > 0.0]
-ymin = np.min(positive_spectrum)
-ymax = np.max(positive_spectrum)
 
-ax.set_ylim(ymin * 0.8, ymax * 20.0)
+# ============================================================
+# Set y-axis limits
+# ============================================================
 
-for i, m in enumerate(matches[:max_labels]):
+positive_photon_flux = photon_flux[positive]
 
-    peak_x = m["peak_wavelength"]
-    peak_y = m["peak_luminosity"]
+ymin = np.min(positive_photon_flux)
+ymax = np.max(positive_photon_flux)
 
-    line_label = f"{m['catalog_ion']} {m['catalog_wavelength']:.2f}"
+ax.set_ylim(
+    ymin * 0.8,
+    ymax * 2.0
+)
 
-    yoffset = 1.15 + 0.25 * (i % 4)
 
-    ax.text(
-        peak_x,
-        peak_y * yoffset,
-        line_label,
-        rotation=90,
-        fontsize=6.5,
-        va="bottom",
-        ha="center",
-        color="black",
-        clip_on=False
-    )
+# ============================================================
+# Tick formatting
+# ============================================================
 
 ax.minorticks_on()
 
 ax.tick_params(
-    axis='both',
-    which='major',
-    direction='in',
+    axis="both",
+    which="major",
+    direction="in",
     top=True,
     right=True,
     length=6,
@@ -193,31 +267,80 @@ ax.tick_params(
 )
 
 ax.tick_params(
-    axis='both',
-    which='minor',
-    direction='in',
+    axis="both",
+    which="minor",
+    direction="in",
     top=True,
     right=True,
     length=3,
     width=1.0
 )
 
+
+# ============================================================
+# Spine formatting
+# ============================================================
+
 for spine in ax.spines.values():
     spine.set_linewidth(1.2)
 
-ax.legend(loc='best', frameon=False, fontsize=10)
+
+ax.legend(
+    loc="best",
+    frameon=False,
+    fontsize=10
+)
 
 fig.tight_layout()
 
-outfile = os.path.join(OutDir, f"{Filename}.png")
 
-fig.savefig(outfile, dpi=300, bbox_inches="tight")
+# ============================================================
+# Save plot
+# ============================================================
+
+PlotFile = os.path.join(
+    OutDir,
+    f"{Filename}.png"
+)
+
+fig.savefig(
+    PlotFile,
+    dpi=300,
+    bbox_inches="tight"
+)
+
 plt.close(fig)
 
-print(f" Read spectrum from {SpectrumFile}")
-print(f" Read catalog from {CatalogFile}")
-print(f" Number of catalog lines: {len(catalog)}")
-print(f" Found {len(peak_indices)} spectral peaks")
-print(f" Matched {len(matches)} peaks with catalog lines")
-print(f" Saved matched line list to {matched_file}")
-print(f" Saved spectrum plot to {outfile}")
+
+# ============================================================
+# Print summary
+# ============================================================
+
+print(f"Read luminosity spectrum from: {SpectrumFile}")
+print(f"Distance to WR 140: {distance_pc:.2f} pc")
+print(f"Distance in cm: {distance_cm:.8e} cm")
+print(f"Number of wavelength points: {wavelength.size}")
+
+print(
+    f"Wavelength range: "
+    f"{wavelength.min():.6e} - "
+    f"{wavelength.max():.6e} Angstrom"
+)
+
+print(
+    f"Integrated luminosity: "
+    f"{integrated_luminosity:.8e} erg s^-1"
+)
+
+print(
+    f"Integrated energy flux: "
+    f"{integrated_energy_flux:.8e} erg cm^-2 s^-1"
+)
+
+print(
+    f"Integrated photon flux: "
+    f"{integrated_photon_flux:.8e} photons cm^-2 s^-1"
+)
+
+print(f"Saved calculated spectrum to: {OutputSpectrumFile}")
+print(f"Saved photon flux plot to: {PlotFile}")

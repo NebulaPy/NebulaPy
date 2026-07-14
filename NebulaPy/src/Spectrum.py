@@ -132,6 +132,7 @@ class spectrum:
             f" [ MULTIPROCESSING ]: Using {self.proc}/{mp.cpu_count()} available CPU cores"
         )
 
+        #todo: CIE can be input to the generateSpectrum Method rather than Spectrum class itself.
         '''
         self.CIE = CIE
         self.NEQ = not CIE
@@ -523,11 +524,15 @@ class spectrum:
             grid_mask
     ):
 
+        ##########################################################################
+        # Check whether the CHIANTI species attribute is initialized
         if not self.chianti_species_attributes:
             utils.nebula_exit_with_error(
                 "Species Attributes Container is not initialized or is empty."
             )
 
+        ##########################################################################
+        # Check input arrays
         temperature = np.asarray(temperature, dtype=np.float64)
         ne = np.asarray(ne, dtype=np.float64)
         grid_volume = np.asarray(grid_volume, dtype=np.float64)
@@ -554,6 +559,7 @@ class spectrum:
                     f"shapes for species {species}."
                 )
 
+        #todo: CIE can be input to the generateSpectrum Method rather than Spectrum class itself.
         '''
         if self.NEQ:
             utils.nebula_warning(
@@ -573,7 +579,7 @@ class spectrum:
                                    grid_size=self.gridSize)
 
         ##########################################################################
-        # DEM calculation first
+        # DEM calculation
         # initialize emission measure class
         EM = emissionMeasure(Tmin=100, Tmax=1.0e9, Nbins=300, verbose=self.verbose)
         # generate DEM
@@ -581,6 +587,7 @@ class spectrum:
                  ne=ne, speciesDensities=species_densities,
                  volume=grid_volume, gridMask=grid_mask)
 
+        ##########################################################################
         # Allocate only binned spectra
         SpeciesSpectrum = {
             species: np.zeros(
@@ -601,8 +608,9 @@ class spectrum:
         # multilevel grid ---------------------------------------------------------
         else:
             timeout = 0.1
-            AllTasks = []
 
+            # Gathering all task and configuring the No of multiprocessing cores ==
+            AllTasks = []
             for level in range(N_grid_level):
                 for row in range(len(temperature[level])):
                     AllTasks.append(
@@ -610,10 +618,8 @@ class spectrum:
                          temperature[level, row],
                          ne[level, row], grid_mask[level, row])
                     )
-
             Ntasks = len(AllTasks)
 
-            # Start small. Increase to 4 only if memory is okay.
             proc = min(self.proc, Ntasks)
 
             print(
@@ -622,6 +628,7 @@ class spectrum:
                 f"{len(temperature[0])} grid slices/level "
             )
 
+            # Creating worker and done queues for multiprocessing =================
             workerQ = mp.Queue()
             doneQ = mp.Queue()
 
@@ -631,6 +638,7 @@ class spectrum:
             for _ in range(proc):
                 workerQ.put(None)
 
+            # Initializing Worker Processes =======================================
             processes = []
 
             for _ in range(proc):
@@ -695,7 +703,6 @@ class spectrum:
 
         ##########################################################################
         # Multiply by DEM and sum over temperature bins
-        ##########################################################################
 
         Spectrum = {}
 

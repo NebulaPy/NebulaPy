@@ -11,7 +11,6 @@ cm2au = 6.68459e-14  # cm to au conversion factor
 
 
 # Colliding wind binaries
-'''
 #Razer Blade -> Set up paths and filenames
 OutputDir = '/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum'  # Output image directory
 SiloDir = '/home/tony/Desktop/CWBs-2026/Silo-n128'  # Directory containing silo files
@@ -21,7 +20,6 @@ finish_time = None
 time_unit = 'sec'
 out_frequency = None
 SimulationName = "CWB"
-'''
 
 # edit here for Mimir
 '''
@@ -38,6 +36,7 @@ SimulationName = "CWB"
 
 
 # Bowshock
+'''
 #Razer Blade -> Set up paths and filenames
 OutputDir = '/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum'  # Output image directory
 SiloDir = '/home/tony/Desktop/multi-ion-bowshock/sim-output/silo'  # Directory containing silo files
@@ -46,8 +45,8 @@ start_time = 161  # in kyr
 finish_time = 161.5
 time_unit = 'kyr'
 out_frequency = None
-SimulationName = "Bowshock"
-
+SimulationName = "Bowshock_FF"
+'''
 
 # Batch the silo files according to the time instant
 batched_silos = util.batch_silos(
@@ -87,15 +86,15 @@ elements = pion.get_elements()
 
 # initializing spectrum class
 NebulaSpectrum = nebula.spectrum(
-    min_wavelength=1.0,  # Minimum wavelength in Angstroms
-    max_wavelength=10.0,  # Maximum wavelength in Angstroms
+    min_wavelength=0.5,  # Minimum wavelength in Angstroms
+    max_wavelength=20.0,  # Maximum wavelength in Angstroms
     min_photon_energy=None,  # Minimum photon energy in keV # not implemented
     max_photon_energy=None,  # Maximum photon energy in keV # not implemented
     elements=elements,
     doBremsstrahlung=False,
     doFreebound=False,
-    doLine=True,
-    doTwophoton=False,
+    doLine=False,
+    doTwophoton=True,
     CIE=False,
     filtername=None,
     filterfactor=None,
