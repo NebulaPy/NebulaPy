@@ -28,13 +28,27 @@ def compute_row_spectrum(workerQ, doneQ, spectrum_obj, timeout):
 
             level, row, row_temperature, row_ne, row_grid_mask = task
 
+            '''
             row_species_spectra_coefficients = spectrum_obj.computeSpeciesSpectraCoeff(
                 row_temperature=row_temperature,
                 row_ne=row_ne,
                 row_grid_mask=row_grid_mask,
             )
+            '''
 
+            row_species_nonFBCoeff, row_species_FBCoeff = (
+                spectrum_obj.computeSpeciesSpectraCoeff(
+                    row_temperature=row_temperature,
+                    row_ne=row_ne,
+                    row_grid_mask=row_grid_mask,
+                )
+            )
+
+            '''
             doneQ.put((level, row, row_species_spectra_coefficients))
+            '''
+
+            doneQ.put((level, row, row_species_nonFBCoeff, row_species_FBCoeff))
 
         except queue.Empty:
             break
@@ -442,7 +456,13 @@ class spectrum:
         # Determine the number of temperature values
         N_temp = len(row_temperature)
 
+        '''
         species_spectra_coefficients = {}
+        '''
+
+        # Store spectra by emission process
+        species_nonFBCoeff = {}
+        species_FBCoeff = {}
 
         # info: looping over species to calculate the emission rate from each process
         for species in self.chianti_species_attributes.keys():
@@ -500,6 +520,7 @@ class spectrum:
 
             CHIANTI.terminate()
 
+            '''
             # sum over all processes for this species
             species_emission_coeff = (
                     bremsstrahlung_coefficients
@@ -509,8 +530,25 @@ class spectrum:
             )
 
             species_spectra_coefficients[species] = species_emission_coeff * row_grid_mask[:, None]
+            '''
 
+            # Free-free + line + two-photon emission
+            nonFBCoeff = (
+                    bremsstrahlung_coefficients
+                    + line_coefficients
+                    + twophoton_coefficients
+            )
+
+            species_nonFBCoeff[species] = nonFBCoeff * row_grid_mask[:, None]
+
+            # Free-bound emission only
+            species_FBCoeff[species] = freebound_coefficients * row_grid_mask[:, None]
+
+        '''
         return species_spectra_coefficients
+        '''
+        return species_nonFBCoeff, species_FBCoeff
+
 
     ######################################################################################
     # generate spectrum for 2D data
@@ -670,17 +708,24 @@ class spectrum:
 
                 while completed < Ntasks:
 
+                    '''
                     level, row, row_species_spectra_coefficents = doneQ.get()
+                    '''
+                    level, row, row_species_nonFBCoeff, row_species_FBCoeff = doneQ.get()
+
 
                     if level == "ERROR":
                         for p in processes:
                             p.terminate()
 
+                        '''
                         utils.nebula_exit_with_error(row_species_spectra_coefficents)
+                        '''
+                        utils.nebula_exit_with_error(row_species_nonFBCoeff)
 
                     row_bins = EM.DEM_indices[level, row]
 
-                    for chianti_species, spectra in row_species_spectra_coefficents.items():
+                    for chianti_species, spectra in row_species_nonFBCoeff.items():
                         pion_species = utils.getPionSymbol(chianti_species)
                         if pion_species not in SpeciesSpectrum:
                             continue
