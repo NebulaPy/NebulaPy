@@ -1,0 +1,44 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      # Chianti.py asserts this exists at import time; autodoc never reads the
+      # database itself, so any path will do.
+      XUVTOP: /tmp/xuvtop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      # ChiantiPy/pypion/pyneb/ipyparallel are mocked in conf.py, so they are
+      # deliberately not installed here.
+      - run: pip install sphinx sphinx_rtd_theme numpy scipy matplotlib pandas h5py astropy requests tqdm
+      - run: sphinx-apidoc -f -o docs/source NebulaPy
+      - run: sphinx-build docs/source docs/_build/html
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build/html
+      - id: deploy
+        uses: actions/deploy-pages@v4

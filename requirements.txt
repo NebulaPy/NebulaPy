@@ -9,3 +9,4 @@ pandas
 h5py
 astropy
 PyNeb
+tqdm
