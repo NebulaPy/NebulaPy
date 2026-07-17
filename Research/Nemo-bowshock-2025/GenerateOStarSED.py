@@ -9,8 +9,8 @@ EnergyBins = [[7.902470e+00, 1.126030e+01], [1.126030e+01, 1.359840e+01],
                  [4.788780e+01, 5.441780e+01], [5.441780e+01, 6.342330e+01],
                  [6.342330e+01, 7.700000e+01]]
 
-plot_dir = '/home/tony/Desktop/NebulaPy/problems/Nemo-bowshock-2025/OStar-Atlas-SED'
-pion_format = '/home/tony/Desktop/NebulaPy/problems/Nemo-bowshock-2025/OStar-Atlas-SED'
+plot_dir = '/home/tony/Desktop/NebulaPy/Research/Nemo-bowshock-2025/OStar-Atlas-SED'
+pion_format = '/home/tony/Desktop/NebulaPy/Research/Nemo-bowshock-2025/OStar-Atlas-SED'
 
 atlas_sed = nebula.sed(
     energy_bins=EnergyBins,

@@ -11,8 +11,8 @@ EnergyBins = [
     [6.342330e+01, 7.854778e+01], [7.854778e+01, 1.000000e+02]
 ]
 
-plot_dir = '/home/tony/Desktop/NebulaPy/problems'
-pion_format = '/home/tony/Desktop/NebulaPy/problems'
+plot_dir = '/home/tony/Desktop/NebulaPy/Research'
+pion_format = '/home/tony/Desktop/NebulaPy/Research'
 
 cmfgen_sed = nebula.sed(
     database='/home/tony/Desktop/NebulaPy/NebulaPy-DB',

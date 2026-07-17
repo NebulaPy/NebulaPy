@@ -17,8 +17,8 @@ EnergyBins = [[7.902470e+00, 1.126030e+01],
               [6.342330e+01, 6.450000e+01],
               [6.450000e+01, 7.700000e+01]]
 
-plot_dir = '/mnt/local/jm/code/arun/NebulaPy/problems/atlas_n16'
-pion_format = '/mnt/local/jm/code/arun/NebulaPy/problems/atlas_n16'
+plot_dir = '/mnt/local/jm/code/arun/NebulaPy/Research/atlas_n16'
+pion_format = '/mnt/local/jm/code/arun/NebulaPy/Research/atlas_n16'
 
 atlas_sed = nebula.sed(
     energy_bins=EnergyBins,

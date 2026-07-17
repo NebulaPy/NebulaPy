@@ -26,9 +26,9 @@ logs/
 *.log.*
 tests/*.txt
 NebulaPy-DB/
-problems/*.txt
-problems/cmfgen_z086-wo-mdot50/
-problems/powr_mw-ob-i_mdot50/
+Research/*.txt
+Research/cmfgen_z086-wo-mdot50/
+Research/powr_mw-ob-i_mdot50/
 silo-4.11.1-bsd-smalltest.tar.xz
 silo-4.11.1-bsd-smalltest/
 silo-4.11.1-bsd/

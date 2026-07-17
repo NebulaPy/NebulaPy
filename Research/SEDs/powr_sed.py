@@ -9,18 +9,15 @@ EnergyBins = [[7.902470e+00, 1.126030e+01], [1.126030e+01, 1.359840e+01],
                  [4.788780e+01, 5.441780e+01], [5.441780e+01, 6.342330e+01],
                  [6.342330e+01, 7.700000e+01]]
 
-plot_dir = '/mnt/local/jm/code/arun/NebulaPy/problems/atlas_n15'
-pion_format = '/mnt/local/jm/code/arun/NebulaPy/problems/atlas_n15'
+plot_dir = '/home/tony/Desktop/NebulaPy/Research'
+pion_format = '/home/tony/Desktop/NebulaPy/Research'
 
-atlas_sed = nebula.sed(
+powr_sed = nebula.sed(
     energy_bins=EnergyBins,
     verbose=True,
-    plot=None,
+    plot=plot_dir,
     pion=pion_format
 )
 
-atlas_sed.CastelliKuruczAtlas(metallicity=0.0, gravity=4.5)
-atlas_sed.CastelliKuruczAtlas(metallicity=0.0, gravity=4.0)
-atlas_sed.CastelliKuruczAtlas(metallicity=0.0, gravity=3.5)
-
-
+powr_sed.PotsdamWolfRayet('SMC', 'WNL-H20', -5.0)
+print(powr_sed.container)

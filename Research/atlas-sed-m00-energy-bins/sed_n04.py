@@ -1,15 +1,12 @@
 import NebulaPy.src as nebula
 
-EnergyBins = [[7.902470e+00, 1.126030e+01],
-              [1.126030e+01, 1.359840e+01],
-              [1.359840e+01, 1.453410e+01],
-              [1.453410e+01, 1.600000e+01]]
+EnergyBins = [[7.902470e+00,1.359840e+01],
+              [1.359840e+01, 2.438310e+01],
+              [2.438310e+01, 5.441780e+01],
+              [5.441780e+01, 7.700000e+01]]
 
-for i in range(60):
-  EnergyBins.append([16.0+i,16.0+i+1.0])
-
-plot_dir = '/mnt/local/jm/code/arun/NebulaPy/problems/atlas_n64'
-pion_format = '/mnt/local/jm/code/arun/NebulaPy/problems/atlas_n64'
+plot_dir = '/mnt/local/jm/code/arun/NebulaPy/Research/atlas_n04'
+pion_format = '/mnt/local/jm/code/arun/NebulaPy/Research/atlas_n04'
 
 atlas_sed = nebula.sed(
     energy_bins=EnergyBins,
@@ -30,5 +27,6 @@ bb_sed = nebula.sed(
 )
 
 bb_sed.Blackbody()
+
 
 

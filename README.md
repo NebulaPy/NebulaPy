@@ -68,7 +68,7 @@ source ~/.bashrc
 For detailed usage instructions, examples, and features, please 
 visit [NebulaPy Wiki](https://github.com/arunmathewofficial/NebulaPy/wiki). 
 Sample scripts demonstrating NebulaPy functionalities can be found
-in the `NebulaPy/problems` directory.
+in the `NebulaPy/Research` directory.
 
 
 ## Documentation
