@@ -1,15 +1,15 @@
 #import numpy as np
 import NebulaPy.src as nebula
-from NebulaPy.src import Utils as util
 import time
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from NebulaPy.src.LoggingConfig import configure_logging, get_logger
 
 # constants
 cm2au = 6.68459e-14  # cm to au conversion factor
 
-
+'''
 # Colliding wind binaries
 #Razer Blade -> Set up paths and filenames
 OutputDir = '/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum'  # Output image directory
@@ -20,6 +20,18 @@ finish_time = None
 time_unit = 'sec'
 out_frequency = None
 SimulationName = "CWB"
+'''
+
+# Colliding wind binaries
+#Macbook -> Set up paths and filenames
+OutputDir = '/Users/tony/Desktop/CWBs-NEMOv1/Post-Processing/WR140'  # Output image directory
+SiloDir = '/Users/tony/Desktop/CWBs-NEMOv1/Silo-n128'  # Directory containing silo files
+Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
+start_time = 14.35  # days
+finish_time = None
+time_unit = 'days'
+out_frequency = None
+SimulationName = "WR140"
 
 # edit here for Mimir
 '''
@@ -48,168 +60,192 @@ out_frequency = None
 SimulationName = "Bowshock_FF"
 '''
 
-# Batch the silo files according to the time instant
-batched_silos = util.batch_silos(
-    SiloDir,
-    Filebase,
-    start_time=start_time,
-    finish_time=finish_time,
-    time_unit=time_unit,
-    out_frequency=out_frequency
-)
+def main():
+    """Generate spectra without re-running this workflow in spawned workers."""
 
-key = input(" Press 'y' to continue, anything else to exit: ").strip().lower()
+    configure_logging(level="INFO", log_to_file=True, log_file=f"{Filebase}.log")
+    logger = get_logger()
+    logger.info(f"{Filebase} X-ray Spectrum")
 
-if key == "y":
-    print(" Continuing execution...")
-else:
-    util.nebula_info("Resetting parameters before the next run")
-    exit(0)
-
-
-# Initialize the Pion class from NebulaPy, which handles the simulation data
-pion = nebula.pion(batched_silos, verbose=True)
-
-# loading geometry attributes from the first silo file in the batch
-# and saves them into a geometry container.
-pion.load_geometry(scale='cm')
-N_grid_level = pion.geometry_container['Nlevel']
-mesh_edges_min = pion.geometry_container['edges_min']
-mesh_edges_max = pion.geometry_container['edges_max']
-N_grid = pion.geometry_container['Ngrid']
-grid_volume = pion.get_grid_volumes_2D()
-grid_mask = pion.geometry_container['mask']
-
-# loading chemistry container for pion simulation data
-pion.load_chemistry()
-elements = pion.get_elements()
-
-# initializing spectrum class
-NebulaSpectrum = nebula.spectrum(
-    min_wavelength=0.5,  # Minimum wavelength in Angstroms
-    max_wavelength=20.0,  # Maximum wavelength in Angstroms
-    min_photon_energy=None,  # Minimum photon energy in keV # not implemented
-    max_photon_energy=None,  # Maximum photon energy in keV # not implemented
-    elements=elements,
-    doBremsstrahlung=True,
-    doFreebound=True,
-    doLine=True,
-    doTwophoton=True,
-    CIE=False,
-    filtername=None,
-    filterfactor=None,
-    userGrid=True,
-    gridSize=3000,
-    allLines=True,
-    MPNcores=4,
-    verbose=False
-)
-
-runtime = 0.0
-
-# Loop over each time instant in the batched silo files
-for step, silo_instant in enumerate(batched_silos):
-
-    silo_instant_start_time = time.time()
-
-    print(" [ SIMULATION SNAPSHOT ] " + "─" * 70)
-
-    sim_time = pion.get_simulation_time(silo_instant, time_unit=time_unit)
-    print(f" Step: {step} | Simulation time: {sim_time:.6e}")
-
-    # Extract temperature and electron number density
-    temperature = np.asarray(
-        pion.get_parameter('Temperature', silo_instant),
-        dtype=np.float64
+    # Batch the silo files according to the time instant
+    batched_silos = nebula.Silo.batch(
+        SiloDir,
+        Filebase,
+        start_time=start_time,
+        finish_time=finish_time,
+        time_unit=time_unit,
+        out_frequency=out_frequency
     )
 
-    ne = pion.get_ne(silo_instant)
-    species_densities = pion.get_species_number_densities(silo_instant)
+    key = input("Press 'y' to continue, anything else to exit: ").strip().lower()
 
-    NebulaSpectrum.generateSpectrum(
-        temperature=temperature,
-        ne=ne,
-        species_densities=species_densities,
-        grid_volume=grid_volume,
-        grid_mask=grid_mask
+    if key == "y":
+        pass
+    else:
+        nebula.get_logger(__name__).info("Resetting parameters before the next run")
+        exit(0)
+
+
+    # Initialize the Pion class from NebulaPy, which handles the simulation data
+    pion = nebula.pion(batched_silos, verbose=True)
+
+    # loading geometry attributes from the first silo file in the batch
+    # and saves them into a geometry container.
+    pion.load_geometry(scale='cm')
+    N_grid_level = pion.geometry_container['Nlevel']
+    mesh_edges_min = pion.geometry_container['edges_min']
+    mesh_edges_max = pion.geometry_container['edges_max']
+    N_grid = pion.geometry_container['Ngrid']
+    grid_volume = pion.get_grid_volumes_2D()
+    grid_mask = pion.geometry_container['mask']
+
+    # loading chemistry container for pion simulation data
+    pion.load_chemistry()
+    elements = pion.get_elements()
+
+    # initializing spectrum class
+    NebulaSpectrum = nebula.spectrum(
+        min_wavelength=0.5,  # Minimum wavelength in Angstroms
+        max_wavelength=20.0,  # Maximum wavelength in Angstroms
+        min_photon_energy=None,  # Minimum photon energy in keV # not implemented
+        max_photon_energy=None,  # Maximum photon energy in keV # not implemented
+        elements=elements,
+        doBremsstrahlung=True,
+        doFreebound=True,
+        doLine=True,
+        doTwophoton=True,
+        CIE=False,
+        filtername=None,
+        filterfactor=None,
+        userGrid=True,
+        gridSize=3000,
+        allLines=True,
+        MPNcores=4,
+        verbose=False,
+        progress=True,
     )
 
-    wavelength = NebulaSpectrum.WavelengthGrid
-    spectrum = NebulaSpectrum.Spectrum
+    runtime = 0.0
 
-    # Save spectrum to text file
-    txtfile = os.path.join(
-        OutputDir,
-        f"{Filebase}_Spectrum_{sim_time.value:6e}.txt"
-    )
+    # Loop over each time instant in the batched silo files
+    for step, silo_instant in enumerate(batched_silos):
 
-    np.savetxt(
-        txtfile,
-        np.c_[wavelength, spectrum],
-        header="Wavelength[A] Spectrum[erg s^-1 A^-1]",
-        fmt="%.8e"
-    )
+        silo_instant_start_time = time.time()
 
-    print(f" Saved spectrum data to {txtfile}")
+        sim_time = pion.get_simulation_time(silo_instant, time_unit=time_unit)
+        logger.info(
+            "Simulation snapshot: step %s, time %.6e %s",
+            step,
+            sim_time.value,
+            sim_time.unit,
+        )
 
-    energy = 12.39841984 / wavelength
-    idx = np.argsort(energy)
-    energy = energy[idx]
+        # Extract temperature and electron number density
+        temperature = np.asarray(
+            pion.get_parameter('Temperature', silo_instant),
+            dtype=np.float64
+        )
 
-    fig, ax = plt.subplots(figsize=(10, 5))
+        ne = pion.get_ne(silo_instant)
+        species_densities = pion.get_species_number_densities(silo_instant)
 
-    ax.set_xlabel(r"Wavelength [$\AA$]", fontsize=12)
-    ax.set_ylabel(r"$L_\lambda$ [erg s$^{-1}$ $\AA^{-1}$]", fontsize=12)
+        NebulaSpectrum.generateSpectrum(
+            temperature=temperature,
+            ne=ne,
+            species_densities=species_densities,
+            grid_volume=grid_volume,
+            grid_mask=grid_mask
+        )
 
-    ax.plot(
-        wavelength,
-        spectrum,
-        color="green",
-        linewidth=1.4,
-        label=f"NEQ {SimulationName} Spectrum"
-    )
+        wavelength = NebulaSpectrum.WavelengthGrid
+        spectrum = NebulaSpectrum.Spectrum
 
-    ax.set_yscale("log")
+        # Save spectrum to text file
+        txtfile = os.path.join(
+            OutputDir,
+            f"{Filebase}_Spectrum_{sim_time.value:6e}.txt"
+        )
 
-    ax.minorticks_on()
+        np.savetxt(
+            txtfile,
+            np.c_[wavelength, spectrum],
+            header="Wavelength[A] Spectrum[erg s^-1 A^-1]",
+            fmt="%.8e"
+        )
 
-    ax.tick_params(
-        axis='both',
-        which='major',
-        direction='in',
-        top=True,
-        right=True,
-        length=6,
-        width=1.2,
-        labelsize=11
-    )
+        logger.info("Saved spectrum data to %s", txtfile)
 
-    ax.tick_params(
-        axis='both',
-        which='minor',
-        direction='in',
-        top=True,
-        right=True,
-        length=3,
-        width=1.0
-    )
+        energy = 12.39841984 / wavelength
+        idx = np.argsort(energy)
+        energy = energy[idx]
 
-    for spine in ax.spines.values():
-        spine.set_linewidth(1.2)
+        fig, ax = plt.subplots(figsize=(10, 5))
 
-    ax.legend(loc='best', frameon=False, fontsize=10)
+        ax.set_xlabel(r"Wavelength [$\AA$]", fontsize=12)
+        ax.set_ylabel(r"$L_\lambda$ [erg s$^{-1}$ $\AA^{-1}$]", fontsize=12)
 
-    fig.tight_layout()
+        ax.plot(
+            wavelength,
+            spectrum,
+            color="green",
+            linewidth=1.4,
+            label=f"NEQ {SimulationName} Spectrum"
+        )
 
-    outfile = os.path.join(OutputDir, f"{Filebase}_Spectrum_{sim_time.value:6e}.png")
+        ax.set_yscale("log")
 
-    fig.savefig(outfile, dpi=300, bbox_inches="tight")
-    plt.close(fig)
+        ax.minorticks_on()
 
-    print(f" sim time: {sim_time:.6e}, saved snapshot {step} to {outfile}")
+        ax.tick_params(
+            axis='both',
+            which='major',
+            direction='in',
+            top=True,
+            right=True,
+            length=6,
+            width=1.2,
+            labelsize=11
+        )
 
-    # Update runtime
-    dt = time.time() - silo_instant_start_time
-    runtime += dt
+        ax.tick_params(
+            axis='both',
+            which='minor',
+            direction='in',
+            top=True,
+            right=True,
+            length=3,
+            width=1.0
+        )
 
-    print(f" runtime: {runtime:.4e} s | step runtime: {dt:.4e} s")
+        for spine in ax.spines.values():
+            spine.set_linewidth(1.2)
+
+        ax.legend(loc='best', frameon=False, fontsize=10)
+
+        fig.tight_layout()
+
+        outfile = os.path.join(OutputDir, f"{Filebase}_Spectrum_{sim_time.value:6e}.png")
+
+        fig.savefig(outfile, dpi=300, bbox_inches="tight")
+        plt.close(fig)
+
+        logger.info(
+            "Saved snapshot %s at simulation time %.6e %s to %s",
+            step,
+            sim_time.value,
+            sim_time.unit,
+            outfile,
+        )
+
+        # Update runtime
+        dt = time.time() - silo_instant_start_time
+        runtime += dt
+
+        logger.info("Runtime: total %.4e s, snapshot %.4e s", runtime, dt)
+
+    logger.info("X-ray spectrum workflow completed in %.4e s", runtime)
+    logger.info("Run log written to %s", log_file)
+
+
+if __name__ == "__main__":
+    main()

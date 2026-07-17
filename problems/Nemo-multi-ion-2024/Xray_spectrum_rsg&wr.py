@@ -21,7 +21,7 @@ filebase = 'e7_WRwind_d1l5n256_v1500'  # Base name of the silo files
 # Set up paths and filenames
 
 # Batch the silo files according to the time instant
-batched_silos = util.batch_silos(silo_dir, filebase)
+batched_silos = nebula.Silo.batch(silo_dir, filebase)
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
 pion = nebula.pion(batched_silos, verbose=True)
@@ -72,7 +72,7 @@ for step, silo_instant in enumerate(batched_silos):
 
     wind_tracer_mask = pion.get_parameter('Trace8', silo_instant)
 
-    '''
+    r'''
     temperature = pion.get_parameter('Temperature', silo_instant)
     density = pion.get_parameter('Density', silo_instant)
     ne = pion.get_ne(silo_instant)
@@ -170,8 +170,6 @@ for step, silo_instant in enumerate(batched_silos):
     print(f"Saving X-ray spectrum into file")
     df.to_csv(filename, sep='\t', index=False)
     '''
-
-
 
 
 

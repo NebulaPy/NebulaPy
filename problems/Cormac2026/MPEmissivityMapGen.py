@@ -69,10 +69,10 @@ def compute_emissivity(workerQ, doneQ, timeout=0.1):
             print(f" multiprocessing: finished computing emissivity for {ion_name:<4} lines")
             doneQ.put({ion_name: emissivity})  # Store result
         except queue.Empty:  # Use correct exception for empty queue
-            util.nebula_exit_with_error(f"multiprocessing - no task in queue")
+            raise nebula.NebulaError(f"multiprocessing - no task in queue")
             break  # Queue is empty, exit loop
         except Exception as e:
-            util.nebula_exit_with_error(f'multiprocessing - working process {e}')
+            raise nebula.NebulaError(f'multiprocessing - working process {e}')
             break
 
 
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 
 
     # Batch the silo files for analysis within the specified time range
-    batched_silos = util.batch_silos(
+    batched_silos = nebula.Silo.batch(
         silo_dir,
         filebase,
         start_time=start_time,
@@ -128,7 +128,7 @@ if __name__ == "__main__":
         cell_volume = pion.get_cylindrical_cell_volume().value
 
     # h5 FILE ############################################################################
-    attrs = {"filegen": "NebulaPy", "version": util.nebula_version(),}
+    attrs = {"filegen": "NebulaPy", "version": nebula.__version__,}
     datasets = {"mesh": {"edges_min": mesh_edges_min, "edges_max": mesh_edges_max, },
                 "grid": {"Nlevel": N_grid_level, "mask": grid_mask, "cell_volume": cell_volume,
                          "shell_volume": shell_volume, "radial_array": radial_array},

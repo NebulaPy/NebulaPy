@@ -1,12 +1,34 @@
+# Python environments and caches
+venv/
+.venv/
+.venv-*/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Packaging and build output
 build/
-NebulaPy.egg-info/
+dist/
+*.egg-info/
+
+# Editors and operating-system metadata
 .idea/
+.vscode/
+.DS_Store
+
+# Project-generated data
+logs/
+*.log
+*.log.*
 tests/*.txt
 NebulaPy-DB/
-dist/
 problems/*.txt
 problems/cmfgen_z086-wo-mdot50/
 problems/powr_mw-ob-i_mdot50/
 silo-4.11.1-bsd-smalltest.tar.xz
 silo-4.11.1-bsd-smalltest/
-silo-4.11.1-bsd/**
+silo-4.11.1-bsd/

@@ -11,7 +11,11 @@ import warnings
 import importlib.resources as pkg_resources
 import NebulaPy.data as compressed_data
 import NebulaPy.version as version
+from NebulaPy.src.LoggingConfig import configure_logging, get_logger
+from NebulaPy.src.NebulaProgress import update_progress
 warnings.filterwarnings("ignore")
+
+logger = get_logger(__name__)
 
 
 class DownloadDatabase:
@@ -30,12 +34,12 @@ class DownloadDatabase:
             if not os.path.exists(sed_database_dir):
                 os.makedirs(sed_database_dir)  # make both NebulaPy-DB and SED directories
                 if verbose:
-                    print(" made database directory and SED subdirectory")
+                    logger.info("Created database and SED directories")
             else:
                 if verbose:
-                    print(" database directory already exists")
+                    logger.info("Database directory already exists")
         except Exception as e:
-            print(f" error: {e}")
+            logger.exception("Unable to prepare the SED database directory")
 
 
         self.sed_database_dir = sed_database_dir
@@ -49,17 +53,17 @@ class DownloadDatabase:
             if not os.path.exists(cool_database_dir):
                 os.makedirs(cool_database_dir)  # make both NebulaPy-DB and SED directories
                 if verbose:
-                    print(" made cooling table subdirectory")
+                    logger.info("Created cooling-table directory")
             else:
                 if verbose:
-                    print(" cooling table directory already exists.")
+                    logger.info("Cooling-table directory already exists")
         except Exception as e:
-            print(f" error: {e}")
+            logger.exception("Unable to prepare the cooling-table directory")
 
         self.cool_database_dir = cool_database_dir
         self.download_cooling_table()
         if verbose:
-            print(" Database download completed")
+            logger.info("Database download completed")
 
 
     #########################################################################################
@@ -74,24 +78,17 @@ class DownloadDatabase:
             prefix      - Optional  : prefix string (Str)
             fill       - Optional  : bar fill character (Str)
         """
-        length = 20 # length of progress bar
-        percent = ("{0:." + str(1) + "f}").format(100 * (iteration / float(total_files)))
-        filled_length = int(length * iteration // total_files)
-        bar = fill * filled_length + '-' * (length - filled_length)
         if error is None:
-            sys.stdout.write(f'\r{prefix} downloading: |{bar}| {percent}% complete')
-            sys.stdout.flush()
-            # Print New Line on Complete
-            if iteration == total_files:
-                sys.stdout.write('\r' + ' ' * (len(f'{prefix} downloading: |{bar}| {percent}% complete')) + '\r')
-                sys.stdout.flush()
-                sys.stdout.write(f'\r{prefix} download completed\n')
+            update_progress(
+                key=prefix,
+                description=f"{prefix.strip()} download",
+                completed=iteration,
+                total=total_files,
+                unit="files",
+                enabled=self.verbose,
+            )
         else:
-            # Clear the progress bar line
-            sys.stdout.write('\r' + ' ' * (len(f'{prefix} downloading: |{bar}| {percent}% complete')) + '\r')
-            sys.stdout.flush()
-            # Print the error message
-            print(f'{error}')
+            logger.error("%s", error)
 
     #########################################################################################
     # Verify atlas model in atlas database directory
@@ -124,7 +121,7 @@ class DownloadDatabase:
 
             return True  # Return True if all conditions are met
         except Exception as e:  # Catch any exceptions that occur
-            print(f"\033[91m error: {e} \033[0m")  # Print the exception message
+            logger.exception("Unable to verify Atlas model directory %s", model_dir)
             return False  # Return False if an exception occurs
 
     #########################################################################################
@@ -171,7 +168,7 @@ class DownloadDatabase:
             os.makedirs(model_dir, exist_ok=True)
 
             if self.verify_atlas_model(model_dir, Nfiles[model_index]):
-                print(f" Atlas model {model_name} exists in database")
+                logger.info("Atlas model %s exists in the database", model_name)
                 NModelExists += 1
                 continue
 
@@ -192,18 +189,19 @@ class DownloadDatabase:
                         self.download_progress(file_index, Nfiles[model_index],
                                                prefix=prefix_comment, error=err)
                         if err is not None:
-                            print(f"\033[91m error: NebulaPy version"
-                                  f" {version.__version__} database "
-                                  f"download incomplete, restart download. \033[0m \n"
-                                  f" use 'download-database'")
+                            logger.error(
+                                "NebulaPy %s database download is incomplete; "
+                                "restart with 'download-database'",
+                                version.__version__,
+                            )
                             sys.exit(1)
 
 
         if NModelExists == 8:
-            print(" all Atlas model exist in database")
+            logger.info("All Atlas models exist in the database")
 
         else:
-            print(" Atlas model download completed successfully")
+            logger.info("Atlas model download completed successfully")
         # Downloading atlas info files ######################################################
 
     #########################################################################################
@@ -253,11 +251,11 @@ class DownloadDatabase:
         with tarfile.open(PoWR_tarfile, 'r:xz') as tar:
             # Iterate through the members of the tar archive
             for member in tar.getmembers():
-                print(f' Extracting {member.name}')
+                logger.debug("Extracting %s", member.name)
                 tar.extract(member, path=self.sed_database_dir)
                 time.sleep(delay)
 
-        print(f' Files have been extracted to {self.sed_database_dir}')
+        logger.info("PoWR files extracted to %s", self.sed_database_dir)
 
     #########################################################################################
     # download CMFGEN database
@@ -275,11 +273,11 @@ class DownloadDatabase:
         with tarfile.open(CMFGEN_tarfile, 'r:xz') as tar:
             # Iterate through the members of the tar archive
             for member in tar.getmembers():
-                print(f' Extracting {member.name}')
+                logger.debug("Extracting %s", member.name)
                 tar.extract(member, path=self.sed_database_dir)
                 time.sleep(delay)
 
-        print(f' Files have been extracted to {self.sed_database_dir}')
+        logger.info("CMFGEN files extracted to %s", self.sed_database_dir)
 
     #########################################################################################
     # download CMFGEN database
@@ -297,11 +295,11 @@ class DownloadDatabase:
         with tarfile.open(CoolTab_tarfile, 'r:xz') as tar:
             # Iterate through the members of the tar archive
             for member in tar.getmembers():
-                print(f' Extracting {member.name}')
+                logger.debug("Extracting %s", member.name)
                 tar.extract(member, path=self.cool_database_dir)
                 time.sleep(delay)
 
-        print(f' Files have been extracted to {self.cool_database_dir}')
+        logger.info("Cooling-table files extracted to %s", self.cool_database_dir)
 
 
     @staticmethod
@@ -313,6 +311,7 @@ class DownloadDatabase:
     @staticmethod
     def run():
         """Main method to handle command line arguments and run the download process."""
+        configure_logging()
         parser = argparse.ArgumentParser(description="Download NebulaPy database")
         parser.add_argument(
             'destination',
@@ -323,11 +322,6 @@ class DownloadDatabase:
         args = parser.parse_args()
         # Pass the destination and verbose flag to the download_database method
         DownloadDatabase.download_database(destination=args.destination)
-
-
-
-
-
 
 
 

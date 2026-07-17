@@ -1,5 +1,5 @@
 from .Chianti import chianti
-from NebulaPy.src import Utils as utils
+from NebulaPy.src.Utils import getPionSymbol
 import NebulaPy.src.Chianti as nebula_chianti
 import NebulaPy.src.Constants as const
 import os
@@ -7,7 +7,10 @@ from NebulaPy.src.EmissionMeasure import emissionMeasure
 import multiprocessing as mp
 import queue
 import numpy as np
-from tqdm import tqdm
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+from NebulaPy.src.NebulaProgress import NebulaProgress, track
+
+logger = get_logger(__name__)
 
 #from .CIE import cieMode
 import ChiantiPy.tools.filters as chfilters
@@ -81,7 +84,8 @@ class spectrum:
             userGrid=False,
             MPNcores=4,
             gridSize=1000,
-            verbose=True
+            verbose=True,
+            progress=True,
     ):
 
         # flags and parameters
@@ -94,9 +98,10 @@ class spectrum:
         self.filterfactor = filterfactor
         self.allLines = allLines
         self.verbose = verbose
+        self.progress = progress
 
 
-        print(" [ SPECTRUM MODULE ] : Initializing spectrum calculation")
+        logger.info("Initializing spectrum calculation")
 
         # wavelength and photon energy inputs
         if min_wavelength is not None and max_wavelength is not None:
@@ -107,27 +112,33 @@ class spectrum:
             self.max_wvl = const.kev2Ang / min_photon_energy
 
         else:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 "Provide either wavelength range or photon energy range."
             )
 
         if self.min_wvl <= 0.0 or self.max_wvl <= 0.0:
-            utils.nebula_exit_with_error("Wavelength bounds must be positive.")
+            raise NebulaError("Wavelength bounds must be positive.")
 
         if self.min_wvl >= self.max_wvl:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 "Minimum wavelength must be smaller than maximum wavelength."
             )
 
         if not (doBremsstrahlung or doFreebound or doLine or doTwophoton):
-            utils.nebula_exit_with_error("No emission processes specified")
+            raise NebulaError("No emission processes specified")
 
         # Verbose output
-        print(" Radiative process configuration:")
-        print(f"   Bremsstrahlung continuum : {'Enabled' if doBremsstrahlung else 'Disabled'}")
-        print(f"   Free-bound continuum     : {'Enabled' if doFreebound else 'Disabled'}")
-        print(f"   Spectral line emission   : {'Enabled' if doLine else 'Disabled'}")
-        print(f"   Two-photon emission      : {'Enabled' if doTwophoton else 'Disabled'}")
+        enabled_processes = [
+            name
+            for enabled, name in (
+                (doBremsstrahlung, "bremsstrahlung"),
+                (doFreebound, "free-bound"),
+                (doLine, "lines"),
+                (doTwophoton, "two-photon"),
+            )
+            if enabled
+        ]
+        logger.info("Radiative processes: %s", ", ".join(enabled_processes))
 
 
         # Initialize empty attributes for species and elemental abundances
@@ -142,9 +153,7 @@ class spectrum:
         # Multiprocessing  ##########################################
 
         self.proc = min(MPNcores, mp.cpu_count())
-        print(
-            f" [ MULTIPROCESSING ]: Using {self.proc}/{mp.cpu_count()} available CPU cores"
-        )
+        logger.info("Multiprocessing: using %s of %s available CPU cores", self.proc, mp.cpu_count())
 
         #todo: CIE can be input to the generateSpectrum Method rather than Spectrum class itself.
         '''
@@ -186,17 +195,17 @@ class spectrum:
 
         if self.verbose:
             if not user_grid:
-                print(" [ WAVELENGTH GRID ] : Setting up default CHIANTI wavelength grid")
+                logger.info("Setting up the default CHIANTI wavelength grid")
             else:
-                print(" [ WAVELENGTH GRID ] : Setting up uniform wavelength grid")
+                logger.info("Setting up a uniform wavelength grid")
 
         if min_wvl >= max_wvl:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 " Minimum wavelength must be smaller than maximum wavelength."
             )
 
         if not self.chianti_species_attributes:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 " Species Attributes Container is not initialized or is empty."
             )
 
@@ -206,13 +215,11 @@ class spectrum:
 
         species_list = list(self.chianti_species_attributes.items())
 
-        for species, attributes in tqdm(
+        for species, attributes in track(
                 species_list,
-                desc=" Retrieving CHIANTI wavelength grid",
-                unit=" species",
-                ncols=100,
-                leave=True,
-                disable=self.verbose
+                description="Retrieving CHIANTI wavelength grid",
+                unit="species",
+                enabled=self.progress,
         ):
 
             if 'line' not in attributes['keys']:
@@ -244,7 +251,7 @@ class spectrum:
             lines = np.asarray(lines, dtype=np.float64)
 
             if lines.size == 0:
-                utils.nebula_exit_with_error(
+                raise NebulaError(
                     " No CHIANTI lines found for the selected species."
                 )
 
@@ -269,7 +276,7 @@ class spectrum:
         elif grid_size is not None:
 
             if grid_size < 2:
-                utils.nebula_exit_with_error(
+                raise NebulaError(
                     " grid_size must be at least 2."
                 )
 
@@ -284,24 +291,25 @@ class spectrum:
         # No valid grid option
         # ------------------------------------------------------------------
         else:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 " Either use_chianti_grid=True or grid_size must be specified."
             )
 
         wavelength_grid.sort()
 
         if wavelength_grid.size == 0:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 " No wavelength points found in the requested wavelength range."
             )
 
         self.WavelengthGrid = wavelength_grid
         self.N_wvl = wavelength_grid.size
 
-        print(
-            f" [ WAVELENGTH GRID ]: "
-            f"{self.WavelengthGrid[0]:.4f}–{self.WavelengthGrid[-1]:.4f} Å | "
-            f"{self.N_wvl} spectral points"
+        logger.info(
+            "Wavelength grid: %.4f–%.4f Å, %s spectral points",
+            self.WavelengthGrid[0],
+            self.WavelengthGrid[-1],
+            self.N_wvl,
         )
 
 
@@ -313,17 +321,17 @@ class spectrum:
     def LineCataloger(self, Filebase="", OutDir=""):
 
         if not Filebase:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 "LineCataloger: output file base name not specified."
             )
 
         if not OutDir:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 "LineCataloger: output directory not specified."
             )
 
         if not os.path.isdir(OutDir):
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 f"LineCataloger: output directory does not exist: {OutDir}"
             )
 
@@ -339,13 +347,11 @@ class spectrum:
 
         species_list = list(self.chianti_species_attributes.items())
 
-        for species, attributes in tqdm(
+        for species, attributes in track(
                 species_list,
-                desc=" Cataloging CHIANTI wavelength grid",
-                unit=" species",
-                ncols=100,
-                leave=True,
-                disable=not self.verbose
+                description="Cataloging CHIANTI wavelength grid",
+                unit="species",
+                enabled=self.progress,
         ):
 
             if 'line' not in attributes['keys']:
@@ -444,9 +450,7 @@ class spectrum:
                     f"{upper:>20}\n"
                 )
 
-        utils.nebula_done_comment(
-            f"Saved CHIANTI line catalogue to {outfile}"
-        )
+        logger.debug("Saved CHIANTI line catalogue to %s", outfile)
 
     ######################################################################################
     # COMPUTE SPECIES SPECTRA RATE
@@ -479,7 +483,7 @@ class spectrum:
 
             #if species not in ['fe_25', 'fe_26', 'si_14', 'si_13', 's_16']:
             #if species not in ['h_2']:
-            #    #utils.nebula_warning(f"{count} Skipping {species} ...")
+            #    #logger.warning(f"{count} Skipping {species} ...")
             #    continue
 
             species_processes = self.chianti_species_attributes[species]['keys']
@@ -565,7 +569,7 @@ class spectrum:
         ##########################################################################
         # Check whether the CHIANTI species attribute is initialized
         if not self.chianti_species_attributes:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 "Species Attributes Container is not initialized or is empty."
             )
 
@@ -580,7 +584,7 @@ class spectrum:
                 temperature.shape == ne.shape ==
                 grid_volume.shape == grid_mask.shape
         ):
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 "Input arrays have inconsistent shapes."
             )
 
@@ -592,7 +596,7 @@ class spectrum:
         for species, density in species_densities.items():
 
             if density.shape != temperature.shape:
-                utils.nebula_exit_with_error(
+                raise NebulaError(
                     f"Species density input arrays have inconsistent "
                     f"shapes for species {species}."
                 )
@@ -600,12 +604,12 @@ class spectrum:
         #todo: CIE can be input to the generateSpectrum Method rather than Spectrum class itself.
         '''
         if self.NEQ:
-            utils.nebula_warning(
+            logger.warning(
                 "NEI mode is not implemented yet; using CIE instead."
             )
 
         elif self.CIE:
-            utils.nebula_warning(
+            logger.warning(
                 "Using collisional ionization equilibrium (CIE)."
             )
         '''
@@ -619,7 +623,7 @@ class spectrum:
         ##########################################################################
         # DEM calculation
         # initialize emission measure class
-        EM = emissionMeasure(Tmin=100, Tmax=1.0e9, Nbins=300, verbose=self.verbose)
+        EM = emissionMeasure(Tmin=100, Tmax=1.0e9, Nbins=300, verbose=self.progress)
         # generate DEM
         EM.DEM2D(temperature=temperature,
                  ne=ne, speciesDensities=species_densities,
@@ -641,7 +645,7 @@ class spectrum:
 
         # uniform grid or 1 level grid -------------------------------------------
         if N_grid_level == 1:
-            utils.nebula_warning("Uniform grid not implemented.")
+            logger.warning("Uniform grid not implemented.")
 
         # multilevel grid ---------------------------------------------------------
         else:
@@ -660,10 +664,11 @@ class spectrum:
 
             proc = min(self.proc, Ntasks)
 
-            print(
-                f" [ MULTIPROCESSING ]: Total tasks {Ntasks} | "
-                f"{N_grid_level} levels | "
-                f"{len(temperature[0])} grid slices/level "
+            logger.info(
+                "Multiprocessing: %s tasks, %s levels, %s grid slices per level",
+                Ntasks,
+                N_grid_level,
+                len(temperature[0]),
             )
 
             # Creating worker and done queues for multiprocessing =================
@@ -696,15 +701,14 @@ class spectrum:
             completed = 0
 
             if self.verbose:
-                print(" Computing spectrum")
+                logger.info("Computing spectrum")
 
-            with tqdm(
-                    total=Ntasks,
-                    desc=f" Computing species spectra",
-                    unit="task",
-                    ncols=90,
-                    disable=self.verbose
-            ) as pbar:
+            with NebulaProgress(
+                    "Computing species spectra",
+                    Ntasks,
+                    unit="tasks",
+                    enabled=self.progress,
+            ) as progress:
 
                 while completed < Ntasks:
 
@@ -719,14 +723,14 @@ class spectrum:
                             p.terminate()
 
                         '''
-                        utils.nebula_exit_with_error(row_species_spectra_coefficents)
+                        raise NebulaError(row_species_spectra_coefficents)
                         '''
-                        utils.nebula_exit_with_error(row_species_nonFBCoeff)
+                        raise NebulaError(row_species_nonFBCoeff)
 
                     row_bins = EM.DEM_indices[level, row]
 
                     for chianti_species, spectra in row_species_nonFBCoeff.items():
-                        pion_species = utils.getPionSymbol(chianti_species)
+                        pion_species = getPionSymbol(chianti_species)
                         if pion_species not in SpeciesSpectrum:
                             continue
 
@@ -741,7 +745,7 @@ class spectrum:
                             )
 
                     completed += 1
-                    pbar.update(1)
+                    progress.advance()
 
             for p in processes:
                 p.join()
@@ -767,5 +771,3 @@ class spectrum:
         )
 
         self.Spectrum = integrated_spectrum
-
-

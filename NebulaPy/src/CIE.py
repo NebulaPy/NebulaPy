@@ -1,8 +1,11 @@
 import numpy as np
 from pathlib import Path
 import os
-from NebulaPy.src import Utils as utils
-from tqdm import tqdm
+from NebulaPy.src.Utils import getPionSymbol
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+from NebulaPy.src.NebulaProgress import track
+
+logger = get_logger(__name__)
 
 class cieMode:
 
@@ -14,7 +17,7 @@ class cieMode:
 
         # Check if the database exists, exit if missing
         if database is None:
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 "required database dir missing, install database to proceed"
             )
 
@@ -28,24 +31,23 @@ class cieMode:
         cie_file = self.cie_file
 
         if not os.path.exists(cie_file):
-            utils.nebula_exit_with_error(f"CIE file not found: {cie_file}")
+            raise NebulaError(f"CIE file not found: {cie_file}")
 
         header = None
         data = []
 
         if self.verbose:
-            print(" [ CIE ]: Loading collision ionization equilibrium table")
+            logger.info("Loading collision ionization equilibrium table")
 
         with open(cie_file, "r") as f:
 
             lines = f.readlines()
 
-            iterator = tqdm(
+            iterator = track(
                 lines,
-                desc=" Importing CIE grid",
-                unit=" lines",
-                ncols=90,
-                disable=not self.verbose
+                description="Importing CIE grid",
+                unit="lines",
+                enabled=self.verbose,
             )
 
             for line in iterator:
@@ -64,28 +66,30 @@ class cieMode:
                 data.append([float(x) for x in parts])
 
         if header is None:
-            utils.nebula_exit_with_error("CIE file header not found.")
+            raise NebulaError("CIE file header not found.")
 
         if not data:
-            utils.nebula_exit_with_error("CIE file contains no data.")
+            raise NebulaError("CIE file contains no data.")
 
         self.data = np.array(data, dtype=np.float64)
 
         # Keep the first column as log_T and convert ion columns to PION symbols
         self.col_index = {
-            ("log_T" if i == 0 else utils.getPionSymbol(name)): i
+            ("log_T" if i == 0 else getPionSymbol(name)): i
             for i, name in enumerate(header)
         }
 
         self.AllSpecies = np.array(
-            [utils.getPionSymbol(name) for name in header[1:]],
+            [getPionSymbol(name) for name in header[1:]],
             dtype=str
         )
 
         if self.verbose:
-            print(" CIE table summary")
-            print(f" Temperature grid points : {self.data.shape[0]}")
-            print(f" Ion fraction columns    : {self.data.shape[1] - 1}")
+            logger.info(
+                "CIE table loaded: %s temperature points, %s ion-fraction columns",
+                self.data.shape[0],
+                self.data.shape[1] - 1,
+            )
 
     ######################################################################################
     # Interpolate ion fraction for a given ion and temperature(s)

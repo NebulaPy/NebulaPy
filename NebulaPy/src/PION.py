@@ -2,10 +2,13 @@ import re
 import numpy as np
 from pypion.ReadData import ReadData
 from pypion.SiloHeader_data import OpenData
-from NebulaPy.src import Utils as util
+from NebulaPy.src.Utils import get_element_symbol
 from NebulaPy.src import Constants as const
 import astropy.units as unit
-from tqdm import tqdm
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+from NebulaPy.src.NebulaProgress import track
+
+logger = get_logger(__name__)
 
 class pion():
     '''
@@ -24,40 +27,34 @@ class pion():
     # get simulation time
     ######################################################################################
     def get_simulation_time(self, silo_instant, time_unit='sec'):
+        """Return the simulation time as an Astropy quantity."""
+        from NebulaPy.src.Silo import Silo
 
-        # Open the data for the first silo instant silo
         header_data = OpenData(silo_instant)
-        # Set the directory to '/header'
-        header_data.db.SetDir('/header')
-        # Retrieve what coordinate system is used
-        coord_sys = header_data.db.GetVar("coord_sys")
-        header_data.close()
-        # spherical coordinate
-        if coord_sys == 3:
-            # Read the data from the current silo file
-            dataio = ReadData(silo_instant)
-            basic = dataio.get_1Darray('Density')  # Retrieve basic simulation data, such as density
-            dataio.close()  # Close the data file
-            if time_unit == 'sec':
-                return (basic['sim_time'] * unit.s)
-            elif time_unit == 'kyr':
-                return (basic['sim_time'] * unit.s).to(unit.kyr)
+        try:
+            header_data.db.SetDir('/header')
+            coord_sys = int(header_data.db.GetVar("coord_sys"))
+        finally:
+            header_data.close()
 
-        # cylindrical coordinates
-        elif coord_sys == 2:
-            # Read the data from the current silo file
-            dataio = ReadData(silo_instant)
-            basic = dataio.get_2Darray('Density')  # Retrieve basic simulation data, such as density
-            dataio.close()  # Close the data file
-            if time_unit == 'sec':
-                return (basic['sim_time'] * unit.s)
-            elif time_unit == 'kyr':
-                return (basic['sim_time'] * unit.s).to(unit.kyr)
+        dataio = ReadData(silo_instant)
+        try:
+            readers = {
+                1: dataio.get_3Darray,
+                2: dataio.get_2Darray,
+                3: dataio.get_1Darray,
+            }
+            reader = readers.get(coord_sys)
+            if reader is None:
+                raise NebulaError(
+                    f"Unsupported coordinate-system identifier: {coord_sys}"
+                )
+            simulation_time = reader('Density')['sim_time'] * unit.s
+        finally:
+            dataio.close()
 
-        # cartesian coordinate
-        elif coord_sys == 1:
-            if self.verbose:
-                util.nebula_exit_with_error(f"{const.coordinate_system[coord_sys]} coordinates not defined, todo list")
+        selected_unit, _ = Silo._time_unit(time_unit)
+        return simulation_time.to(selected_unit)
 
 
     ######################################################################################
@@ -73,7 +70,7 @@ class pion():
         col_width = 25
         ncols = 5
 
-        print(f"\n [PION SILO HEADER INFO] : Number of variables {header_info.nvar}")
+        logger.info("PION silo header contains %s variables", header_info.nvar)
 
         # Define categories by prefix or known names
         categories = {
@@ -102,13 +99,8 @@ class pion():
         # Print in columns
         for cat, items in grouped.items():
             if items:
-                print(f"\n{cat} ({len(items)}):")
-                for i in range(0, len(items), ncols):
-                    row = items[i:i + ncols]
-                    print("".join(f" {v:<{col_width}}" for v in row))
+                logger.info("%s (%s): %s", cat.strip(), len(items), ", ".join(items))
         header_data.close()
-
-        print("\n [PION SILO HEADER INFO] End of variable list\n")
 
     # ==================================================================================
     # LOAD GEOMETRY
@@ -128,9 +120,6 @@ class pion():
 
         '''
         # If verbose is enabled, print the chemistry code
-        if self.verbose:
-            print(f" [ LOADING GEOMETRY ]: ", end="")
-
         # Open the data for the first silo instant silo
         header_data = OpenData(self.silo_set[0])
         # Set the directory to '/header'
@@ -143,16 +132,16 @@ class pion():
 
         if coord_sys == 3:
             if self.verbose:
-                print(f"{const.coordinate_system[coord_sys]} coordinates")
+                logger.info("Loading geometry: %s coordinates", const.coordinate_system[coord_sys])
                 self.spherical_grid(self.silo_set[0])
         elif coord_sys == 2:
             if self.verbose:
-                print(f"{const.coordinate_system[coord_sys]} coordinates")
+                logger.info("Loading geometry: %s coordinates", const.coordinate_system[coord_sys])
                 self.cylindrical_grid(self.silo_set[0])
         elif coord_sys == 1:
             if self.verbose:
-                print(f"{const.coordinate_system[coord_sys]}")
-                util.nebula_exit_with_error(f"{const.coordinate_system[coord_sys]} coordinates not defined, todo list")
+                logger.info("Loading geometry: %s coordinates", const.coordinate_system[coord_sys])
+                raise NebulaError(f"{const.coordinate_system[coord_sys]} coordinates not defined, todo list")
 
 
     ######################################################################################
@@ -167,7 +156,7 @@ class pion():
         # Retrieve what coordinate system is used
         coord_sys = header_data.db.GetVar("coord_sys")
         if not coord_sys == 3:
-            util.nebula_exit_with_error(f"Geometry mismatch {const.coordinate_system[coord_sys]}")
+            raise NebulaError(f"Geometry mismatch {const.coordinate_system[coord_sys]}")
         # Retrieve no of nested grid levels
         Nlevels = header_data.db.GetVar("grid_nlevels")
         Ngrid = header_data.db.GetVar("NGrid")
@@ -180,7 +169,7 @@ class pion():
         self.geometry_container['Ngrid'] = Ngrid
         self.geometry_container['dim_scale'] = self.dim_scale
         if self.verbose:
-            print(f" Dimensional scale: {self.dim_scale}")
+            logger.info("Dimensional scale: %s", self.dim_scale)
 
         # read silo file
         data = ReadData(silo_instant)
@@ -208,7 +197,7 @@ class pion():
 
         # calculating radial points
         if self.verbose:
-            print(' Calculating radial points')
+            logger.info("Calculating radial points")
         radius = []
         for level in range(Nlevels):
             level_min = rmin[level].value
@@ -240,7 +229,7 @@ class pion():
         # Todo: This has to be a separate method
         # calculating shell volumes
         if self.verbose:
-            print(' Calculating shell volumes')
+            logger.info("Calculating shell volumes")
         # Calculating the core volume
         core = 4.0 * const.pi * radius[0] ** 3.0 / 3.0
         # Calculating the shell volumes
@@ -267,7 +256,7 @@ class pion():
         # Retrieve what coordinate system is used
         coord_sys = header_data.db.GetVar("coord_sys")
         if not coord_sys == 2:
-            util.nebula_exit_with_error(f"Geometry mismatch {const.coordinate_system[coord_sys]}")
+            raise NebulaError(f"Geometry mismatch {const.coordinate_system[coord_sys]}")
         # Retrieve no of nested grid levels
         Nlevel = header_data.db.GetVar("grid_nlevels")
         Ngrid = header_data.db.GetVar("NGrid")
@@ -280,8 +269,7 @@ class pion():
         self.geometry_container['Ngrid'] = Ngrid
         self.geometry_container['dim_scale'] = self.dim_scale
         if self.verbose:
-            print(f" N grid levels: {Nlevel}")
-            print(f" dimensional scale: {self.dim_scale}")
+            logger.info("Geometry: %s grid levels, dimensional scale %s", Nlevel, self.dim_scale)
 
         # Read the data from the current silo file
         dataio = ReadData(silo_instant)
@@ -290,7 +278,7 @@ class pion():
         dataio.close()  # Close the data file
 
         if self.verbose:
-            print(f" Retrieving the simulation domain info")
+            logger.info("Retrieving simulation domain information")
 
         self.geometry_container['mask'] = mask
         del mask
@@ -407,11 +395,11 @@ class pion():
             # Check if the chemistry_code is not 'MPv10'
             if not chemistry_code == 'MPv10':
                 # Exit with an error if the chemistry_code is not 'MPv10'
-                util.nebula_exit_with_error(" PION is not running NEMO v1.0; NelubaPy functionality is limited.")
+                raise NebulaError(" PION is not running NEMO v1.0; NelubaPy functionality is limited.")
             else:
                 # If verbose is enabled, print the chemistry code
                 if self.verbose:
-                    print(f" [ LOADING CHEMISTRY ]: NEMO Microphysics features")
+                    logger.info("Loading chemistry: NEMO microphysics features")
 
                 # Loop through each process
                 for index, process in enumerate(processes):
@@ -473,10 +461,12 @@ class pion():
 
                 # If verbose is enabled, print the number of chemical tracers
                 if self.verbose:
-                    print(f" Enabled elements           : {len(tracer_elements)}")
-                    print(f" Chemical tracers (total)   : {Ntracers}")
-                    print(" Elements included:")
-                    print("  " + "   ".join(tracer_elements))
+                    logger.info(
+                        "Chemistry: %s elements, %s tracers",
+                        len(tracer_elements),
+                        Ntracers,
+                    )
+                    logger.info("Elements included: %s", ", ".join(tracer_elements))
 
                 # save mass fraction to chemistry_container dictionary
                 #self.chemistry_container['mass_fractions'] = mass_fractions
@@ -545,27 +535,8 @@ class pion():
         col_width = max(len(item) for item in tracer_items) + 2
         box_width = ncols * (col_width + 1) + 1
 
-        print(f" [PION TRACER INFO] : Number of tracers {Ntracers}")
-        print(" ┌" + "─" * (box_width - 2) + "┐")
-
-        for r in range(nrows):
-
-            print(" │", end='')
-
-            for c in range(ncols):
-
-                idx = r + c * nrows
-
-                if idx < n:
-                    item = tracer_items[idx]
-                else:
-                    item = ""
-
-                print(f"{item:<{col_width}}│", end='')
-
-            print()
-
-        print(" └" + "─" * (box_width - 2) + "┘")
+        logger.info("PION tracer information: %s tracers", Ntracers)
+        logger.debug("PION tracers: %s", ", ".join(tracer_items))
 
     ######################################################################################
     # get elements
@@ -629,7 +600,7 @@ class pion():
         KeyError: If the specified ion key does not exist in the chemistry container.
         """
         if ion not in self.chemistry_container:
-            util.nebula_exit_with_error(f" ion {ion} not found in the chemistry container")
+            raise NebulaError(f" ion {ion} not found in the chemistry container")
         return self.chemistry_container[ion]
 
 
@@ -649,7 +620,7 @@ class pion():
 
         # Extract the element symbol from the ion string using the utility function.
         # For example, 'C++' would return 'C'.
-        element = util.get_element_symbol(ion)
+        element = get_element_symbol(ion)
 
         # Check if the ion meets the criteria for being a top-level ion:
         # 1. It is listed in the predefined set of top-level ions (const.top_level_ions).
@@ -658,7 +629,7 @@ class pion():
             if self.verbose:
                 # If verbose mode is enabled, print a message indicating that the ion
                 # is a top-level ion but is not recognized as a species in NEMO v1.0 chemistry.
-                print(f" ion '{ion}' is a top-level ion, not a recognized species in NEMO")
+                logger.info("Ion '%s' is a top-level ion and not an explicit NEMO species", ion)
             return True  # The ion qualifies as a top-level ion.
         else:
             # If the ion does not meet the criteria, return False.
@@ -685,11 +656,11 @@ class pion():
 
         # Checking if both ion and ion_list are provided, which is an error
         if ion is not None and ion_list is not None:
-            util.nebula_exit_with_error("Ion batch check - provide either 'ion' or 'ionlist', but not both")
+            raise NebulaError("Ion batch check - provide either 'ion' or 'ionlist', but not both")
 
         # If neither ion nor ion_list is provided, exit with an error
         if ion is None and ion_list is None:
-            util.nebula_exit_with_error("Provide either 'ion' or 'ionlist' for ion batch check")
+            raise NebulaError("Provide either 'ion' or 'ionlist' for ion batch check")
 
         filtered_ion_list = []  # List to hold ions that pass the check
 
@@ -708,10 +679,10 @@ class pion():
                     found_ion = True
                 # If ion is not in the container and terminate is False, log a warning
                 elif ion not in self.chemistry_container and terminate is False:
-                    util.nebula_warning(f"Ion '{ion}' not recognized")
+                    logger.warning(f"Ion '{ion}' not recognized")
                 # If ion is not in the container and terminate is True, exit with an error
                 elif ion not in self.chemistry_container and terminate:
-                    util.nebula_exit_with_error(f"Ion '{ion}' not recognized")
+                    raise NebulaError(f"Ion '{ion}' not recognized")
 
             # If top_ion_check is False, just check if the ion exists in the chemistry container
             elif ion in self.chemistry_container:
@@ -720,13 +691,13 @@ class pion():
             # If the ion is not found, log a warning or exit based on terminate flag
             else:
                 if terminate:
-                    util.nebula_exit_with_error(f"Ion '{ion}' not recognized")
+                    raise NebulaError(f"Ion '{ion}' not recognized")
                 elif not terminate:
-                    util.nebula_warning(f"Ion '{ion}' not recognized")
+                    logger.warning(f"Ion '{ion}' not recognized")
 
             # If verbose mode is enabled and the ion is found, print confirmation
             if self.verbose and found_ion:
-                print(f" Ion check: {ion:<{4}} found in chemistry container")
+                logger.info("Ion check: %s found in chemistry container", ion)
 
             return filtered_ion_list
 
@@ -746,10 +717,10 @@ class pion():
                         found_ion = True
                     # If ion is not in the container and terminate is False, log a warning
                     elif ion not in self.chemistry_container and terminate is False:
-                        util.nebula_warning(f"ion '{ion}' not recognized")
+                        logger.warning(f"ion '{ion}' not recognized")
                     # If ion is not in the container and terminate is True, exit with an error
                     elif ion not in self.chemistry_container and terminate:
-                        util.nebula_exit_with_error(f"ion '{ion}' not recognized")
+                        raise NebulaError(f"ion '{ion}' not recognized")
 
                 # If top_ion_check is False, just check if the ion exists in the chemistry container
                 elif ion in self.chemistry_container:
@@ -758,13 +729,13 @@ class pion():
                 # If the ion is not found, log a warning or exit based on terminate flag
                 else:
                     if terminate:
-                        util.nebula_exit_with_error(f"Ion '{ion}' not recognized")
+                        raise NebulaError(f"Ion '{ion}' not recognized")
                     elif not terminate:
-                        util.nebula_warning(f"Ion '{ion}' not recognized")
+                        logger.warning(f"Ion '{ion}' not recognized")
 
                 # If verbose mode is enabled and the ion is found, print confirmation
                 if self.verbose and found_ion:
-                    print(f" Ion check: {ion:<{4}} found in chemistry container")
+                    logger.info("Ion check: %s found in chemistry container", ion)
 
             return filtered_ion_list
 
@@ -785,7 +756,7 @@ class pion():
             A 2D list containing the tracer values for each ion in the tracers array.
         """
 
-        print(self.chemistry_container)
+        logger.debug("Chemistry container: %s", self.chemistry_container)
 
         # Retrieve the 2D array of chemical tracers.
         tracers = self.get_chemical_tracer_list()
@@ -884,15 +855,15 @@ class pion():
         ion mass fraction
         '''
 
-        element = util.get_element_symbol(ion)
+        element = get_element_symbol(ion)
         ion_tracer = None
         if ion not in self.chemistry_container:
             if ion in const.top_level_ions and element in self.chemistry_container['mass_fractions']:
                 if verbose:
-                    util.nebula_info(f"ion '{ion}' is a top-level ion, not a recognized species in NEMO")
+                    logger.info(f"ion '{ion}' is a top-level ion, not a recognized species in NEMO")
                 return None
             else:
-                util.nebula_exit_with_error(f"ion {ion} is not in silo file")
+                raise NebulaError(f"ion {ion} is not in silo file")
         else:
             ion_tracer = self.chemistry_container[ion]
 
@@ -950,13 +921,12 @@ class pion():
 
             ne = [np.zeros(shape) for shape in shape_list]
 
-            level_iterator = tqdm(
+            level_iterator = track(
                 range(Nlevel),
                 total=Nlevel,
-                desc=" Calculating electron density",
-                unit=grid,
-                ncols=100,
-                disable=not verbose
+                description="Calculating electron density",
+                unit="grid levels",
+                enabled=verbose,
             )
 
             for level in level_iterator:
@@ -994,7 +964,7 @@ class pion():
     def get_top_ion_massfrac(self, ion, silo_instant, verbose=True):
 
         # Extract the element string from ion string
-        element = util.get_element_symbol(ion)
+        element = get_element_symbol(ion)
         atomic_number = const.atomic_number[element]
         element_tracer = self.chemistry_container['mass_fractions'][element]
         # set elemental mass fraction to top level ion mass fraction
@@ -1048,7 +1018,7 @@ class pion():
         ion_num_density = [np.zeros(shape) for shape in shape_list]
 
         # Extract the element symbol from the ion identifier
-        element = util.get_element_symbol(ion)
+        element = get_element_symbol(ion)
 
         # Get the mass of the element from constants
         element_mass = const.mass[element]
@@ -1066,7 +1036,7 @@ class pion():
             # Check if the ion is a top-level ion (no sub-ion values available)
             if self.get_ion_values(ion, silo_instant, verbose=verbose) is None:
                 if verbose:
-                    print(f" proceeding to compute the number density for the top-level ion: {ion}")
+                    logger.info("Computing number density for top-level ion %s", ion)
                 # Retrieve the mass fraction for the top-level ion
                 ion_mass_frac = self.get_top_ion_massfrac(ion, silo_instant, verbose=verbose)
 
@@ -1096,12 +1066,11 @@ class pion():
 
         species_list = self.chemistry_container['nebulapy_all_species']
 
-        for ion in tqdm(
+        for ion in track(
                 species_list,
-                desc=" Calculating number densities",
-                unit=" species",
-                ncols=100,
-                disable=not self.verbose
+                description="Calculating number densities",
+                unit="species",
+                enabled=self.verbose,
         ):
             species_number_densities[ion] = self.get_ion_number_density(
                 ion=ion,
@@ -1119,7 +1088,7 @@ class pion():
 
         # 1 dimensional (spherical)
         if self.geometry_container['coordinate_sys'] == 'spherical':
-            util.nebula_exit_with_error('not implemented for 1D coordinate')
+            raise NebulaError('not implemented for 1D coordinate')
 
         # 2 dimensional (cylindrical)
         if self.geometry_container['coordinate_sys'] == 'cylindrical':
@@ -1128,7 +1097,7 @@ class pion():
             Nlevel = self.geometry_container['Nlevel']
 
             if verbose:
-                print(" calculating total number density for each grid level(s)")
+                logger.info("Calculating total number density for each grid level")
 
             # Retrieve the density data from the input file at the current simulation instant.
             density = self.get_parameter("Density", silo_instant)
@@ -1188,8 +1157,6 @@ class pion():
             for level in range(Nlevel):
                 n_total[level] += ne[level]
 
-            print(" returning total number density array")
+            if verbose:
+                logger.info("Total number-density calculation completed")
             return n_total
-
-
-

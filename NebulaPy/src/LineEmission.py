@@ -5,8 +5,12 @@ from .PyNeb import pyneb
 import multiprocessing
 from multiprocessing import Pool, Manager
 from typing import Optional
-from NebulaPy.src import Utils as util
+from NebulaPy.src.Utils import get_spectroscopic_symbol
 from NebulaPy.src import Constants as const
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+from NebulaPy.src.NebulaProgress import update_progress
+
+logger = get_logger(__name__)
 
 class line_emission():
 
@@ -38,17 +42,17 @@ class line_emission():
         missing_line = [line for line in lines if line not in all_lines]
         if missing_line:
             missing_line_str = ", ".join(map(str, missing_line))
-            util.nebula_exit_with_error(f"Requested line(s) {spectroscopic_name} {missing_line_str} not "
+            raise NebulaError(f"Requested line(s) {spectroscopic_name} {missing_line_str} not "
                                         f"found in the CHIANTI database")
         else:
-            print(f" Requested {spectroscopic_name:>6} lines exist in the CHIANTI database")
+            logger.info("Requested %s lines found in the CHIANTI database", spectroscopic_name)
 
 
     ######################################################################################
     # check the line list exist in pyneb database
     ######################################################################################
     def pyneb_line_batch_check(self, lines):
-        util.nebula_warning("Line check not implemented for PyNeb")
+        logger.warning("Line check not implemented for PyNeb")
 
     ######################################################################################
     # line luminosity in 1D spherical setting
@@ -87,27 +91,27 @@ class line_emission():
         indices = []
         for line in lines:
             if self.verbose:
-                print(f' identifying {line} Å from allLines of {ion.chianti_ion.Spectroscopic}')
+                logger.info("Identifying %.6g Å in %s line data", line, ion.chianti_ion.Spectroscopic)
             index = (np.abs(allLines - line)).argmin()
             tolerance = 10 ** -4
             if np.abs(allLines[index] - line) <= tolerance:
                 if self.verbose:
-                    print(f' line {line} Å found at index {index} in allLines')
+                    logger.debug("Line %.6g Å found at index %s", line, index)
                 indices.append(index)
             else:
-                util.nebula_exit_with_error('line not found in allLines')
+                raise NebulaError('line not found in allLines')
 
         self.line_emission_container['line_indices'] = indices
 
         if self.verbose:
-            print(f' retrieving emissivity values for {ion.chianti_ion.Spectroscopic} lines(s): {lines}')
+            logger.info("Retrieving %s emissivities for lines %s", ion.chianti_ion.Spectroscopic, lines)
 
         emissivity = np.asarray(all_emissivity_data['emiss'][indices])
         self.line_emission_container['emiss'] = emissivity
 
         # Calculating line Luminosity
         if self.verbose:
-            print(f' calculating line luminosity for {ion.chianti_ion.Spectroscopic} lines(s): {lines}')
+            logger.info("Calculating %s luminosities for lines %s", ion.chianti_ion.Spectroscopic, lines)
         luminosity = [4.0 * const.pi * np.sum(e * species_density * shell_volume) for e in emissivity]
         self.line_emission_container['luminosity'] = luminosity
 
@@ -146,7 +150,7 @@ class line_emission():
 
         # make keys for lines emissivity map
         for line in lines:
-            map_key = f"{util.get_spectroscopic_symbol(self.ion)} {line}"
+            map_key = f"{get_spectroscopic_symbol(self.ion)} {line}"
             lines_emissivity_map[map_key] = copy.deepcopy(zero_emissivity_map)
 
         # Iterate through each grid level
@@ -174,14 +178,14 @@ class line_emission():
 
                 # Display progress bar if enabled
                 if progress_bar:
-                    # Set a message to show upon completion of the process
-                    completion_msg = f'chianti: finished computing emissivity for {self.ion} lines'
                     prefix_msg = f'chianti: computing emissivity of {self.ion} lines at grid-level {level}'
-                    suffix_msg = 'complete'
-                    # Only show final completion message at the last row and level
-                    completion_msg_condition = (level == NGlevel - 1 and row == rows - 1)
-                    util.progress_bar(row, rows, suffix=suffix_msg, prefix=prefix_msg,
-                                      condition=completion_msg_condition, completion_msg=completion_msg)
+                    update_progress(
+                        key=prefix_msg,
+                        description=prefix_msg,
+                        completed=row + 1,
+                        total=rows,
+                        unit="rows",
+                    )
 
         # Return a dictionary of emissivity maps, keyed by line identifiers
         return lines_emissivity_map
@@ -249,12 +253,11 @@ class line_emission():
         dummy_ne_array = [1.0]
         species = chianti(pion_ion=self.ion, temperature=dummy_temperature_array, ne=dummy_ne_array, verbose=False)
         spectroscopic_name = species.chianti_ion.Spectroscopic
-        completion_msg = f'Chianti: finished computing the luminosity for all {spectroscopic_name} lines'
         keys = species.species_attributes_container[species.chianti_ion_name]['keys']
 
         # Check if the species has emission lines
         if 'line' not in keys:
-            util.nebula_warning(f"{spectroscopic_name} has no line emission associated")
+            logger.warning(f"{spectroscopic_name} has no line emission associated")
             return {'spectroscopic': spectroscopic_name}
         else:
             all_lines = species.get_allLines()
@@ -287,8 +290,6 @@ class line_emission():
                 grid_mask_row = grid_mask[level][row]
 
                 prefix_msg = f'Chianti: computing the luminosity of {spectroscopic_name} lines at grid-level {level}'
-                suffix_msg = 'complete'
-                completion_msg_condition = (level == NGlevel - 1 and row == rows - 1)
 
                 # Compute emissivity for the species at the given conditions
                 species = chianti(pion_ion=self.ion, temperature=temperature_row, ne=ne_row, verbose=False)
@@ -296,7 +297,7 @@ class line_emission():
                 del species
 
                 if not np.array_equal(all_lines, np.abs(all_lines_emissivity_info_row['wvl'])):
-                    util.nebula_exit_with_error("internal consistency check failed: line arrays from "
+                    raise NebulaError("internal consistency check failed: line arrays from "
                                                 "get_allLines() and get_line_emissivity() differ")
 
                 all_lines_emissivity_row = all_lines_emissivity_info_row['emiss']
@@ -311,8 +312,13 @@ class line_emission():
                     )
                 del all_lines_emissivity_info_row
 
-                util.progress_bar(row, rows, suffix=suffix_msg, prefix=prefix_msg,
-                                  condition=completion_msg_condition, completion_msg=completion_msg)
+                update_progress(
+                    key=prefix_msg,
+                    description=prefix_msg,
+                    completed=row + 1,
+                    total=rows,
+                    unit="rows",
+                )
 
             # Accumulate luminosity across all grid levels
             species_all_line_luminosity += species_all_lines_luminosity_level
@@ -320,13 +326,13 @@ class line_emission():
         # Retrieve the N most luminous lines
         # Handle Nlines option
         if Nlines is None:
-            print(f" Chianti: retrieving ALL luminous {spectroscopic_name} lines")
+            logger.info("Retrieving all luminous %s lines", spectroscopic_name)
             # Sort all lines (descending)
             indices = np.argsort(species_all_line_luminosity)[::-1]
         else:
             if not isinstance(Nlines, int) or Nlines <= 0:
                 raise ValueError("Nlines must be a positive integer or None")
-            print(f" Chianti: retrieving top {Nlines} most luminous {spectroscopic_name} lines")
+            logger.info("Retrieving the %s most luminous %s lines", Nlines, spectroscopic_name)
 
             # Top N lines (sorted)
             indices = np.argsort(species_all_line_luminosity)[-Nlines:][::-1]
@@ -393,10 +399,6 @@ class line_emission():
         # Initialize an array to store the total luminosity of all requested lines
         lines_luminosity = np.zeros_like(lines)
 
-        # completion message
-        if progress_bar:
-            completion_msg = f'finished computing the luminosity for {self.ion} lines'
-
         # Loop through each level in the grid
         for level in range(NGlevel):
             # Convert electron density to an array (if not already) and ensure no zero values
@@ -417,8 +419,6 @@ class line_emission():
 
                 if progress_bar:
                     prefix_msg = f'computing the luminosity of {self.ion} lines at grid-level {level}'
-                    suffix_msg = 'complete'
-                    completion_msg_condition = (level == NGlevel - 1 and row == rows - 1)
 
                 # Compute the line emissivity for the species using Chianti
                 species = chianti(pion_ion=self.ion, temperature=temperature_row, ne=ne_row, verbose=False)
@@ -437,8 +437,13 @@ class line_emission():
                 del lines_emissivity_row  # Free memory after usage
 
                 if progress_bar:
-                    util.progress_bar(row, rows, suffix=suffix_msg, prefix=prefix_msg,
-                                      condition=completion_msg_condition, completion_msg=completion_msg)
+                    update_progress(
+                        key=prefix_msg,
+                        description=prefix_msg,
+                        completed=row + 1,
+                        total=rows,
+                        unit="rows",
+                    )
 
 
             # Sum up the computed luminosities across all levels
@@ -471,7 +476,7 @@ class line_emission():
 
         # make keys for lines emissivity map
         for line in lines:
-            map_key = f"{util.get_spectroscopic_symbol(self.ion)} {line}"
+            map_key = f"{get_spectroscopic_symbol(self.ion)} {line}"
             lines_emissivity_map[map_key] = copy.deepcopy(zero_emissivity_map)
 
         # Iterate through each grid level
@@ -500,14 +505,14 @@ class line_emission():
 
                 # Display progress bar if enabled
                 if progress_bar:
-                    # Set a message to show upon completion of the process
-                    completion_msg = f'pyneb: finished computing emissivity for {self.ion} lines'
                     prefix_msg = f'pyneb: computing emissivity of {self.ion} lines at grid-level {level}'
-                    suffix_msg = 'complete'
-                    # Only show final completion message at the last row and level
-                    completion_msg_condition = (level == NGlevel - 1 and row == rows - 1)
-                    util.progress_bar(row, rows, suffix=suffix_msg, prefix=prefix_msg,
-                                      condition=completion_msg_condition, completion_msg=completion_msg)
+                    update_progress(
+                        key=prefix_msg,
+                        description=prefix_msg,
+                        completed=row + 1,
+                        total=rows,
+                        unit="rows",
+                    )
 
         # Return a dictionary of emissivity maps, keyed by line identifiers
         return lines_emissivity_map
@@ -550,10 +555,6 @@ class line_emission():
         # Initialize an array to store the total luminosity of all requested lines
         lines_luminosity = np.zeros_like(lines)
 
-        # completion message
-        if progress_bar:
-            completion_msg = f'finished computing the luminosity for {self.ion} lines'
-
         # Loop through each level in the grid
         for level in range(NGlevel):
             # Convert electron density to an array (if not already) and ensure no zero values
@@ -574,8 +575,6 @@ class line_emission():
 
                 if progress_bar:
                     prefix_msg = f'computing the luminosity of {self.ion} lines at grid-level {level}'
-                    suffix_msg = 'complete'
-                    completion_msg_condition = (level == NGlevel - 1 and row == rows - 1)
 
                 # Compute the line emissivity for the species using Pyneb
                 species = pyneb(pion_ion=self.ion, temperature=temperature_row, ne=ne_row, verbose=False)
@@ -593,8 +592,13 @@ class line_emission():
                 del lines_emissivity_row  # Free memory after usage
 
                 if progress_bar:
-                    util.progress_bar(row, rows, suffix=suffix_msg, prefix=prefix_msg,
-                                      condition=completion_msg_condition, completion_msg=completion_msg)
+                    update_progress(
+                        key=prefix_msg,
+                        description=prefix_msg,
+                        completed=row + 1,
+                        total=rows,
+                        unit="rows",
+                    )
 
 
             # Sum up the computed luminosities across all levels

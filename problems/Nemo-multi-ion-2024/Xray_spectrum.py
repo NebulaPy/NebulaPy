@@ -21,7 +21,7 @@ filebase = 'e7_WRwind_d1l5n256_v1500'  # Base name of the silo files
 # Set up paths and filenames
 
 # Batch the silo files according to the time instant
-batched_silos = util.batch_silos(silo_dir, filebase)
+batched_silos = nebula.Silo.batch(silo_dir, filebase)
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
 pion = nebula.pion(batched_silos, verbose=True)
@@ -164,7 +164,6 @@ for step, silo_instant in enumerate(batched_silos):
     # Save the DataFrame to a text file
     print(f"Saving X-ray spectrum into file")
     df.to_csv(filename, sep='\t', index=False)
-
 
 
 

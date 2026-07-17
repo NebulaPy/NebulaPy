@@ -2,9 +2,11 @@ import numpy as np
 import math
 from astropy import units as u
 import time
-from NebulaPy.src import Utils as util
 from NebulaPy.src import Constants as const
-from tqdm import tqdm
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+from NebulaPy.src.NebulaProgress import track
+
+logger = get_logger(__name__)
 
 pi = math.pi
 m_p = 1.6726219e-24  # g
@@ -28,7 +30,7 @@ class emissionMeasure():
         self.Tmax = Tmax
         self.Nbins = Nbins
 
-        print(" [ EMISSION MEASURE ]: Generating DEM temperature bins")
+        logger.info("Generating DEM temperature bins")
 
         # Calculate the logarithmic width of each bin
         bin_width = (np.log10(self.Tmax) - np.log10(self.Tmin)) / self.Nbins
@@ -52,7 +54,7 @@ class emissionMeasure():
     ######################################################################################
     def generate_DEM_indices(self, temperature):
 
-        print(" [ EMISSION MEASURE ]: Mapping cells to DEM temperature bins")
+        logger.info("Mapping cells to DEM temperature bins")
 
         DEM_indices = np.full_like(temperature, fill_value=-1, dtype=np.int64)
 
@@ -70,7 +72,7 @@ class emissionMeasure():
 
             DEM_indices[mask] = bin_idx
 
-        print(" [ EMISSION MEASURE ]: DEM temperature-bin indexing completed")
+        logger.info("DEM temperature-bin indexing completed")
 
         self.DEM_indices = DEM_indices
 
@@ -91,19 +93,18 @@ class emissionMeasure():
 
         species_list = list(speciesDensities.items())
 
-        for species, species_density in tqdm(
+        for species, species_density in track(
                 species_list,
-                desc=" Computing species DEM",
-                unit=" species",
-                ncols=90,
-                disable=not self.verbose
+                description="Computing species DEM",
+                unit="species",
+                enabled=self.verbose,
         ):
 
             species_density = np.asarray(species_density, dtype=np.float64)
 
             # Safety check
             if temperature.shape != species_density.shape:
-                util.nebula_exit_with_error(
+                raise NebulaError(
                     f" DEM-2D input arrays have inconsistent shapes for species {species}."
                 )
 
@@ -170,4 +171,3 @@ class emissionMeasure():
               dem_bin_all[w] += np.sum(vol_den * pick)
 
         return dem_bin_all
-

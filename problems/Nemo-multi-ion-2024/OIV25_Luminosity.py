@@ -25,7 +25,7 @@ print(rf" calculating line luminosity of {O3P_pion_ion} lines: {O3P_lines} Angst
 # Batch the silo files according to the time instant
 start_time = 0.0
 finish_time = 85.0
-batched_silos = util.batch_silos(
+batched_silos = nebula.Silo.batch(
     silo_dir,
     filebase,
     start_time=None,
@@ -53,7 +53,7 @@ O3P_line_emission = nebula.line_emission(O3P_pion_ion, verbose=True)  # Initiali
 
 # Open the output file and write the header
 with open(output_file, "w") as file:
-    file.write("# " + util.nebula_version() + '\n')
+    file.write("# " + nebula.__version__ + '\n')
     file.write("# line luminosity(erg/s) for flow velocity: 1500 km/s \n")
     file.write("# time(kyr)\t")
     file.write("\t".join(f"OIV{line}" for line in O3P_lines))
@@ -113,4 +113,3 @@ for step, silo_instant in enumerate(batched_silos):
     # Update the runtime with the time spent on the current step
     runtime += dt
     print(f" runtime: {runtime:.4e} s | dt: {dt:.4e} s")
-

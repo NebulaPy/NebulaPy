@@ -1,6 +1,5 @@
 #import numpy as np
 import NebulaPy.src as nebula
-from NebulaPy.tools import util
 import time
 #from pypion.ReadData import ReadData
 import matplotlib.pyplot as plt
@@ -52,7 +51,7 @@ out_frequency = None
 SimulationName = "Bowshock"
 
 # Batch the silo files according to the time instant
-batched_silos = util.batch_silos(
+batched_silos = nebula.Silo.batch(
     SiloDir,
     Filebase,
     start_time=start_time,
@@ -67,7 +66,7 @@ key = input(" Press 'y' to continue, anything else to exit: ").strip().lower()
 if key == "y":
     print(" Continuing execution...")
 else:
-    util.nebula_info("Resetting parameters before the next run")
+    nebula.get_logger(__name__).info("Resetting parameters before the next run")
     exit(0)
 
 
@@ -110,5 +109,4 @@ NebulaSpectrum = nebula.spectrum(
 
 wavelength = NebulaSpectrum.WavelengthGrid
 NebulaSpectrum.LineCataloger(Filebase=Filebase, OutDir=OutputDir)
-
 

@@ -41,7 +41,7 @@ ion_list = ['Fe24+', 'Fe25+', 'Fe26+']
 #ion_list = ['Fe25+', 'Fe26+']
 
 # Batch the silo files according to the time instant
-batched_silos = util.batch_silos(
+batched_silos = nebula.Silo.batch(
     SiloDir,
     Filebase,
     start_time=start_time,
@@ -168,7 +168,6 @@ for step, silo_instant in enumerate(batched_silos):
     dt = time.time() - silo_instant_start_time
     runtime += dt
     print(f" runtime: {runtime:.4e} s | dt: {dt:.4e} s")
-
 
 
 

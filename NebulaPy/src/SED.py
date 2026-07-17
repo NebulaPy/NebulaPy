@@ -1,15 +1,17 @@
 import os
 import glob
 import re
-import sys
 import math
 import numpy as np
 from astropy.io import fits
 from scipy import integrate
 import matplotlib.pyplot as plt
 import NebulaPy.version as version
-from NebulaPy.src import Utils as util
 from NebulaPy.src import Constants as const
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+from NebulaPy.src.NebulaProgress import update_progress
+
+logger = get_logger(__name__)
 # TODO: Include tolerance for mdot value in potsdam model
 # TODO: Mdot value for SMC-OB-Vd3 and other SMC check
 # TODO: Include these new model in wiki page
@@ -31,7 +33,7 @@ class sed:
         database = os.environ.get("NEBULAPYDB")
         # Check if the database exists, exit if missing
         if database is None:
-            util.nebula_exit_with_error("required database missing, install database to proceed")
+            raise NebulaError("required database missing, install database to proceed")
 
         self.EnergyBins = energy_bins
         self.Plot = plot
@@ -78,19 +80,14 @@ class sed:
             prefix      - Optional  : prefix string (Str)
             fill       - Optional  : bar fill character (Str)
         """
-        length = 20  # length of progress bar
-        iteration = iteration + 1
-        percent = ("{0:." + str(1) + "f}").format(100 * (iteration / float(Nmodels)))
-        filled_length = int(length * iteration // Nmodels)
-        bar = fill * filled_length + '-' * (length - filled_length)
-
-        sys.stdout.write(f'\r {prefix}: |{bar}| {percent}% complete')
-        sys.stdout.flush()
-        # Print New Line on Complete
-        if iteration == Nmodels:
-            sys.stdout.write('\r' + ' ' * (len(f'{prefix}: |{bar}| {percent}% complete ')) + '\r')
-            sys.stdout.flush()
-            sys.stdout.write(f'\r {prefix}: completed\n')
+        update_progress(
+            key=prefix,
+            description=prefix,
+            completed=iteration + 1,
+            total=Nmodels,
+            unit="models",
+            enabled=self.Verbose,
+        )
 
 
     ######################################################################################
@@ -708,7 +705,7 @@ class sed:
     def pion_format(self, pion_format_path, binned_flux_set, model_info):
 
         if self.Verbose:
-            print(f" saving binned SED of {self.Model.lower()} into PION format")
+            logger.info("Saving binned %s SED in PION format", self.Model.lower())
 
         if not pion_format_path.endswith('/'):
             pion_format_path += '/'
@@ -968,7 +965,3 @@ class sed:
 
 
     ################################################################################
-
-
-
-

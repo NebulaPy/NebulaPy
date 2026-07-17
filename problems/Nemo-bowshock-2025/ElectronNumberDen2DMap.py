@@ -39,7 +39,7 @@ out_frequency = None  # Use all available outputs
 print(rf" calculating electron number denisty map")
 
 # --- Get List of Silo Files Based on Time Constraints ---
-batched_silos = util.batch_silos(
+batched_silos = nebula.Silo.batch(
     silo_dir,
     filebase,
     start_time=start_time,

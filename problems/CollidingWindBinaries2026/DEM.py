@@ -31,7 +31,7 @@ out_frequency = None
 
 
 # Batch the silo files according to the time instant
-batched_silos = util.batch_silos(
+batched_silos = nebula.Silo.batch(
     SiloDir,
     Filebase,
     start_time=start_time,
@@ -45,7 +45,7 @@ key = input(" Press 'y' to continue, anything else to exit: ").strip().lower()
 if key == "y":
     print(" Continuing execution...")
 else:
-    util.nebula_info("Resetting parameters before the next run")
+    nebula.get_logger(__name__).info("Resetting parameters before the next run")
     exit(0)
 
 
@@ -164,4 +164,3 @@ for step, silo_instant in enumerate(batched_silos):
     dt = time.time() - silo_instant_start_time
     runtime += dt
     print(f" runtime: {runtime:.4e} s | dt: {dt:.4e} s")
-

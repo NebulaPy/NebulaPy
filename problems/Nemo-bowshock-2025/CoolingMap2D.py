@@ -37,7 +37,7 @@ ion = 'H'
 # Batch the silo files according to the time instant
 start_time = 0.0
 finish_time = 85.0
-batched_silos = util.batch_silos(
+batched_silos = nebula.Silo.batch(
     silo_dir,
     filebase,
     start_time=None,
@@ -167,4 +167,3 @@ for step, silo_instant in enumerate(batched_silos):
     # Update the runtime with the time spent on the current step
     runtime += dt
     print(f" runtime: {runtime:.4e} s | dt: {dt:.4e} s")
-

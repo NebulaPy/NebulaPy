@@ -1,18 +1,34 @@
 import os
 os.environ['XUVTOP']
-import ChiantiPy
-import ChiantiPy.core as ch
-import ChiantiPy.tools.filters as chfilters
-import ChiantiPy.tools.io as chio
-import ChiantiPy.tools.data as chdata
-from ChiantiPy.base import specTrails
+import io as _io
+import warnings
+from contextlib import redirect_stdout
+
+# ChiantiPy prints version and GUI-selection messages unconditionally during
+# import and calls os.path.isfile(False) when no chiantirc exists. Keep those
+# known import-time side effects quiet, particularly in spawned workers.
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        "ignore",
+        message="bool is used as a file descriptor",
+        category=RuntimeWarning,
+    )
+    with redirect_stdout(_io.StringIO()):
+        import ChiantiPy
+        import ChiantiPy.core as ch
+        import ChiantiPy.tools.filters as chfilters
+        import ChiantiPy.tools.io as chio
+        import ChiantiPy.tools.data as chdata
+        from ChiantiPy.base import specTrails
 import numpy as np
 import ChiantiPy.tools.util as chianti_util
-from NebulaPy.src import Utils as utils
 from NebulaPy.src import Constants as const
 from ChiantiPy.core.Continuum import continuum
 import ChiantiPy.tools.io as io
 from scipy.interpolate import splev, splrep
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+
+logger = get_logger(__name__)
 
 # Limit the number of threads used by OpenMP and Intel MKL to 1.
 # This prevents oversubscription of CPU cores when running multiprocessing tasks
@@ -40,7 +56,7 @@ class chianti:
 
         # If more than one argument is not None, raise a ValueError
         if non_none_count > 1:
-            utils.nebula_exit_with_error("invalid arguments: set only one of 'chianti_ion', 'pion_ion', or 'pion_elements")
+            raise NebulaError("invalid arguments: set only one of 'chianti_ion', 'pion_ion', or 'pion_elements")
 
         if pion_ion is not None:
             self.chianti_ion_name = self.get_chianti_symbol(pion_ion, make=False)
@@ -134,7 +150,7 @@ class chianti:
 
         The species data is then looped over, and for each element key in the sorted
         `species.Todo` dictionary:
-        - The key is converted using `util.convertName` and stored in `species_attributes`.
+        - The key is converted using CHIANTI's ``convertName`` helper.
         - The relevant data is stored in the `species_attributes` dictionary under
           each element's key.
         - Unnecessary entries like 'filename' and 'experimental' are removed
@@ -158,28 +174,6 @@ class chianti:
 
         self.species_attributes_container = {}
 
-        # Loop through the sorted keys in the dictionary of species
-        if self.verbose:
-            print(" [ SPECIES ATTRIBUTES ] : Retrieving attributes for the following species")
-
-        # First pass: compute width
-        names_tmp = [
-            chianti_util.convertName(akey)['spectroscopic']
-            for akey in sorted(species.Todo.keys())
-        ]
-        width = max(len(name) for name in names_tmp) + 2  # tight padding
-
-        # ==========================================
-        #   Display species in formatted box layout
-        # ==========================================
-
-        ncol = 6
-        count = 0
-        box_width = width * ncol + ncol + 1
-
-        if self.verbose:
-            print(" ┌" + "─" * (box_width - 2) + "┐")
-
         for akey in sorted(species.Todo.keys()):
 
             self.species_attributes_container[akey] = chianti_util.convertName(akey)
@@ -191,32 +185,13 @@ class chianti:
             self.species_attributes_container[akey].pop('filename', None)
             self.species_attributes_container[akey].pop('experimental', None)
 
-            # Verbose boxed output
-            if self.verbose:
-                name = self.species_attributes_container[akey]['spectroscopic']
-
-                if count % ncol == 0:
-                    print(" │", end='')
-
-                print(f"{name:<{width}}", end='│')
-
-                count += 1
-
-                if count % ncol == 0:
-                    print()
-
-        # Handle incomplete last row
-        if self.verbose and count % ncol != 0:
-
-            remaining = ncol - (count % ncol)
-
-            for _ in range(remaining):
-                print(f"{'':<{width}}│", end='')
-
-            print()
-
         if self.verbose:
-            print(" └" + "─" * (box_width - 2) + "┘")
+            names = [
+                attributes["spectroscopic"]
+                for attributes in self.species_attributes_container.values()
+            ]
+            logger.info("Retrieved CHIANTI attributes for %s species", len(names))
+            logger.debug("CHIANTI species: %s", ", ".join(names))
 
         # Finalize the species attributes dictionary
         # At this point, `self.species_attributes` contains all the relevant
@@ -244,23 +219,10 @@ class chianti:
 
         # Loop through the sorted keys in the dictionary of species
         if self.verbose:
-            print(f" chianti ion: retrieving species attributes")
+            logger.info("Retrieving CHIANTI ion attributes for %s", self.chianti_ion_name)
 
-        count = 0
         for akey in sorted(species.Todo.keys()):
             self.species_attributes_container[akey] = chianti_util.convertName(akey)  # Convert the key and store it
-            '''
-            # If verbose mode is enabled, print the spectroscopic name
-            if self.verbose:
-                # Print a comma-separated list of names with up to 10 items per line
-                print(f" {self.species_attributes_container[akey]['spectroscopic']}", end='')
-                count += 1
-                # Print a newline after every 10 items
-                if count % 10 == 0:
-                    print()  # Move to the next line
-                else:
-                    print(", ", end='')  # Continue on the same line
-            '''
             self.species_attributes_container[akey]['keys'] = species.Todo[akey]  # Store relevant data
             # Remove unnecessary data from the dictionary
             del self.species_attributes_container[akey]['filename']
@@ -275,7 +237,7 @@ class chianti:
                    :return: wave-length array
                    """
         if self.verbose:
-            print(' Chianti: Retrieving all spectral lines of ', self.chianti_ion.Spectroscopic)
+            logger.info("Retrieving all spectral lines for %s", self.chianti_ion.Spectroscopic)
         wvl = np.asarray(self.chianti_ion.Wgfa['wvl'], np.float64)
         wvl = np.abs(wvl)
         return wvl
@@ -289,7 +251,7 @@ class chianti:
         :return: wave-length array
         """
         if self.verbose:
-            print(' retrieving spectral lines and transitions of ', self.chianti_ion.Spectroscopic)
+            logger.info("Retrieving spectral lines and transitions for %s", self.chianti_ion.Spectroscopic)
 
         Ref = self.chianti_ion.Elvlc['ref']
         A_value = np.asarray(self.chianti_ion.Wgfa['avalue'], np.float64)
@@ -313,13 +275,12 @@ class chianti:
                # wvl(angstrom), emissivity (ergs s^-1 str^-1), pretty1, pretty2.
                """
         if 'line' not in self.species_attributes_container[self.chianti_ion_name]['keys']:
-            utils.nebula_warning(f'no line emission associate with {self.chianti_ion.Spectroscopic}')
+            logger.warning(f'no line emission associate with {self.chianti_ion.Spectroscopic}')
             return None
 
         else:
             if self.verbose:
-                print(' retrieving emissivity values for all spectral lines '
-                      'of', self.chianti_ion.Spectroscopic)
+                logger.info("Retrieving all line emissivities for %s", self.chianti_ion.Spectroscopic)
             self.chianti_ion.emiss(allLines=allLines)
             emissivity = self.chianti_ion.Emiss
             return emissivity
@@ -351,7 +312,7 @@ class chianti:
 
         # Print a message if verbose mode is enabled.
         if self.verbose:
-            print(" retrieving line index for the given line(s)")
+            logger.info("Retrieving indices for requested spectral lines")
 
         # Check if every requested line exists in the available list of lines.
         missing_lines = [line for line in line_list if line not in all_lines]
@@ -370,7 +331,7 @@ class chianti:
 
             suggestion_str = "\n".join(suggestion_lines)
 
-            utils.nebula_exit_with_error(
+            raise NebulaError(
                 f"Following {self.chianti_ion.Spectroscopic} line(s) were not found in Chianti: {missing_lines}\n"
                 f" Note: Chianti spectral line data are based on theoretical models\n"
                 f"{suggestion_str}"
@@ -379,7 +340,7 @@ class chianti:
 
         # If any requested lines are missing, terminate execution with an error message.
         if missing_lines:
-            utils.nebula_exit_with_error(f"following {self.chianti_ion.Spectroscopic} line(s) are not found in chianti: {missing_lines}")
+            raise NebulaError(f"following {self.chianti_ion.Spectroscopic} line(s) are not found in chianti: {missing_lines}")
 
         # Retrieve the indices of the requested lines within the all_lines array.
         # np.where(all_lines == line) returns an array of indices where the condition is met.
@@ -450,7 +411,10 @@ class chianti:
         )
 
         if self.verbose:
-            utils.nebula_computing_comment(f"Bremsstrahlung emission rate for {self.chianti_ion.Spectroscopic}")
+            logger.debug(
+                "Computing bremsstrahlung emission rate for %s",
+                self.chianti_ion.Spectroscopic,
+            )
 
 
         prefactor_const = ((const.light * 1e8) / 3. / const.emass
@@ -492,7 +456,10 @@ class chianti:
         bremsstrahlung_coefficients = np.asarray(bremsstrahlung_coefficients, dtype=np.float64).squeeze()
 
         if self.verbose:
-            utils.nebula_done_comment(f"{self.chianti_ion.Spectroscopic} Bremsstrahlung emission computed")
+            logger.debug(
+                "Bremsstrahlung emission computed for %s",
+                self.chianti_ion.Spectroscopic,
+            )
 
         return bremsstrahlung_coefficients
 
@@ -505,7 +472,10 @@ class chianti:
         """
 
         if self.verbose:
-            utils.nebula_computing_comment(f"Free-bound emission rate for {self.chianti_ion.Spectroscopic}")
+            logger.debug(
+                "Computing free-bound emission rate for %s",
+                self.chianti_ion.Spectroscopic,
+            )
 
         # Create a continuum object
         continuum_fb = continuum(
@@ -529,7 +499,10 @@ class chianti:
         # Clean up the continuum object to free memory
         del continuum_fb
         if self.verbose:
-            utils.nebula_done_comment(f'{self.chianti_ion.Spectroscopic} free-bound emission calculation completed')
+            logger.debug(
+                "Free-bound emission computed for %s",
+                self.chianti_ion.Spectroscopic,
+            )
 
         return freebound_coefficients
 
@@ -540,8 +513,10 @@ class chianti:
     def get_line_coefficients(self, wavelength, allLines=True, filtername=None, filterfactor=None):
 
         if self.verbose:
-            utils.nebula_computing_comment(f" Retrieving emissivity values "
-                                           f"for all spectral lines of {self.chianti_ion.Spectroscopic}")
+            logger.debug(
+                "Retrieving all spectral-line emissivities for %s",
+                self.chianti_ion.Spectroscopic,
+            )
 
         wavelength = np.asarray(wavelength, dtype=np.float64)
 
@@ -567,11 +542,12 @@ class chianti:
 
         if len(selected_idx) == 0:
             if self.verbose:
-                print(
-                    f" No lines found for {self.chianti_ion.Spectroscopic} "
-                    f"in the wavelength range {min_wvl:.2e} - {max_wvl:.2e} Å"
+                logger.info(
+                    "No %s lines found between %.2e and %.2e Å; skipping",
+                    self.chianti_ion.Spectroscopic,
+                    min_wvl,
+                    max_wvl,
                 )
-                print(" skipping ...")
             return line_emission_coefficients
 
         selected_lines = lines[selected_idx]
@@ -590,8 +566,10 @@ class chianti:
                 )
 
         if self.verbose:
-            utils.nebula_done_comment(
-                f" {self.chianti_ion.Spectroscopic} line calculation completed")
+            logger.debug(
+                "Spectral-line calculation completed for %s",
+                self.chianti_ion.Spectroscopic,
+            )
 
         return line_emission_coefficients
 
@@ -631,20 +609,23 @@ class chianti:
 
         if has_valid_wavelength:
             if self.verbose:
-                utils.nebula_computing_comment(f"Two-photon emission rate for {self.chianti_ion.Spectroscopic}")
+                logger.debug(
+                    "Computing two-photon emission rate for %s",
+                    self.chianti_ion.Spectroscopic,
+                )
             self.chianti_ion.twoPhotonEmiss(wavelength)
             twophoton_coefficients = self.chianti_ion.TwoPhotonEmiss['emiss']
 
             if self.verbose:
-                utils.nebula_done_comment(f'{self.chianti_ion.Spectroscopic} two-photon emission computed')
+                logger.debug(
+                    "Two-photon emission computed for %s",
+                    self.chianti_ion.Spectroscopic,
+                )
 
         if not has_valid_wavelength:
             if self.verbose:
-                utils.nebula_info(
+                logger.info(
                     f"Skipping two-photon emission for {self.chianti_ion.Spectroscopic}: "
                     f"no wavelengths > {wvl0:.3f} Å.")
 
         return twophoton_coefficients
-
-
-

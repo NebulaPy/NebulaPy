@@ -3,14 +3,16 @@ import pyneb as pn
 from pyneb import RecAtom
 from pyneb import Atom
 from pyneb import atomicData as pyneb_atomic_data
-from NebulaPy.src import Utils as util
 from NebulaPy.src import Constants as const
 from NebulaPy.src import chianti as nebula_chianti
 import ChiantiPy.core as ch
-import pkg_resources
+#import pkg_resources
 import warnings
 from .Chianti import chianti
 import numpy as np
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+
+logger = get_logger(__name__)
 
 pn.log_.level = 0
 
@@ -35,11 +37,11 @@ class pyneb:
 
         # If more than one argument is not None, raise a ValueError
         if non_none_count > 1:
-            util.nebula_exit_with_error("invalid arguments: set 'pion_ion' for PyNeb class")
+            raise NebulaError("invalid arguments: set 'pion_ion' for PyNeb class")
 
         if pion_ion is not None:
             if pion_ion in const.top_level_ions:
-                util.nebula_warning("top-level ions are not PION species, processing as PyNeb species")
+                logger.warning("top-level ions are not PION species, processing as PyNeb species")
             self.pyneb_ion_element, self.pyneb_ion_spectral_level = self.get_pyneb_symbol(pion_ion)
             self.pyneb_ion_name = self.pyneb_ion_element + str(self.pyneb_ion_spectral_level)
             self.Spectroscopic = self.spectroscopic_form(pion_ion)
@@ -47,14 +49,14 @@ class pyneb:
             all_recombination_ions = pyneb_atomic_data.getAllAtoms(coll=False, rec=True)
             if self.pyneb_ion_name in all_recombination_ions:
                 if self.verbose:
-                    print(f" pyneb: recombination data exists for {self.Spectroscopic}")
+                    logger.info("PyNeb recombination data found for %s", self.Spectroscopic)
 
                 # begin todo: when implemting for other species, modify below
                 if self.pyneb_ion_element != 'H':
-                    util.nebula_exit_with_error(f"PyNeb is implemented only for H I recombination lines, not {self.Spectroscopic}")
+                    raise NebulaError(f"PyNeb is implemented only for H I recombination lines, not {self.Spectroscopic}")
                 else:
                     if self.verbose:
-                        util.nebula_warning("pyneb class only implemented for H I recombination lines")
+                        logger.warning("pyneb class only implemented for H I recombination lines")
                     # important: only implemented for recombination lines of hydrogen
                     pn.atomicData.setDataFile('h_i_rec_SH95.hdf5')
                     self.pyneb_recomb_ion = RecAtom(self.pyneb_ion_element, self.pyneb_ion_spectral_level)
@@ -62,7 +64,7 @@ class pyneb:
                 # end todo
 
             else:
-                util.nebula_exit_with_error(f"no recombination data for '{self.Spectroscopic}' in PyNeb")
+                raise NebulaError(f"no recombination data for '{self.Spectroscopic}' in PyNeb")
 
 
     ######################################################################################
@@ -146,7 +148,7 @@ class pyneb:
             list of float: Sorted wavelengths of all available H I recombination lines.
         """
         if self.verbose:
-            print(f" pyneb: retrieving all recombination lines of {self.Spectroscopic}")
+            logger.info("Retrieving all PyNeb recombination lines for %s", self.Spectroscopic)
 
         all_lines = []
         dummy_temperature = 1e4  # K
@@ -196,8 +198,9 @@ class pyneb:
 
         # Verbose output to inform user of the action being performed
         if self.verbose:
-            print(
-                f" pyneb: retrieving recombination line emissivities for given line(s) of {self.Spectroscopic}"
+            logger.info(
+                "Retrieving PyNeb recombination-line emissivities for %s",
+                self.Spectroscopic,
             )
 
         # Retrieve all available recombination lines for the current ion
@@ -229,7 +232,7 @@ class pyneb:
             suggestion_str = "\n".join(suggestion_lines)
 
             # Raise an error with detailed information about missing lines
-            util.nebula_exit_with_error(
+            raise NebulaError(
                 f"following {self.Spectroscopic} line(s) were not found in PyNeb: {missing_lines}\n"
                 f" note: PyNeb spectral line data are sourced from the NIST database\n"
                 f"{suggestion_str}"
@@ -254,7 +257,7 @@ class pyneb:
 
             # Detect NaN values and display an error message
             if np.isnan(specific_line_emissivity).any():
-                util.nebula_exit_with_error(
+                raise NebulaError(
                     f"pyneb: found NaN emissivity for given T and ne in line {line_str}"
                 )
 
@@ -263,7 +266,3 @@ class pyneb:
 
         # Return the dictionary containing emissivities for all requested lines
         return line_emissivity
-
-
-
-

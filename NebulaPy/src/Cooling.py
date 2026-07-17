@@ -1,8 +1,10 @@
 import numpy as np
 import os
-from NebulaPy.src import Utils as util
 from NebulaPy.src import Constants as const
 from scipy import interpolate
+from NebulaPy.src.LoggingConfig import NebulaError, get_logger
+
+logger = get_logger(__name__)
 
 class cooling():
 
@@ -28,13 +30,13 @@ class cooling():
         database = os.environ.get("NEBULAPYDB")
         # Check if the database exists, exit if missing
         if database is None:
-            util.nebula_exit_with_error("required database missing, install database to proceed")
+            raise NebulaError("required database missing, install database to proceed")
 
         # Get the corresponding CHIANTI ion symbol for the given pion_ion
         chinati_ion = self.get_chianti_symbol(pion_ion)
 
         if self.verbose:
-            print(f" initializing cooling class")
+            logger.info("Initializing cooling calculation for %s", pion_ion)
         # Construct the filename for the ion cooling table based on the ion symbol
         ion_cooling_filename = chinati_ion + '.txt'
         cooling_database = os.path.join(database, "Cooling", "Chianti")
@@ -43,11 +45,11 @@ class cooling():
         self.ion_cooling_file = os.path.join(cooling_database, ion_cooling_filename)
 
         if self.verbose:
-            print(f' retrieving {pion_ion} cooling rate data from database')
+            logger.info("Retrieving %s cooling-rate data", pion_ion)
 
         # Check if the cooling file exists, exit if not found
         if not os.path.exists(self.ion_cooling_file):
-            util.nebula_exit_with_error(f"database does not contain a cooling table for {pion_ion}")
+            raise NebulaError(f"database does not contain a cooling table for {pion_ion}")
         else:
             # Set up the cooling table if the file exists
             self.setup_cooling_table()
@@ -68,7 +70,8 @@ class cooling():
         performing an interpolation to get a smooth cooling rate function.
         """
 
-        print(f" computing interpolation function for {self.ion} cooling rate")
+        if self.verbose:
+            logger.info("Computing cooling-rate interpolation for %s", self.ion)
 
         # Prepare a list of temperatures (in Kelvin) from log(10) scale, ranging from 10^1 to 10^8
         nemo_temperature = []
@@ -164,7 +167,7 @@ class cooling():
 
         # Check if the shapes of the temperature and ne arrays match
         if temperature.shape != ne.shape:
-            util.nebula_exit_with_error(f"incompatible shapes between the temperature array and the ne array.")
+            raise NebulaError(f"incompatible shapes between the temperature array and the ne array.")
 
         # Initialize a map to store cooling rates
         cooling_rate_map = np.zeros(temperature.shape)

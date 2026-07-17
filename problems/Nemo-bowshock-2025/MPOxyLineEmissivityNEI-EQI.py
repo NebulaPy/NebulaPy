@@ -68,10 +68,10 @@ def compute_emissivity(workerQ, doneQ, timeout=0.1):
             print(f" Multiprocessing: finished computing emissivity for {ion_name:<4} lines")
             doneQ.put({ion_name: emissivity})  # Store result
         except queue.Empty:  # Use correct exception for empty queue
-            util.nebula_exit_with_error(f"Multiprocessing - no task in queue")
+            raise nebula.NebulaError(f"Multiprocessing - no task in queue")
             break  # Queue is empty, exit loop
         except Exception as e:
-            util.nebula_exit_with_error(f'Multiprocessing - working process {e}')
+            raise nebula.NebulaError(f'Multiprocessing - working process {e}')
             break
 
 def print_spectral_lines(task_desc, ion_lines):
@@ -189,7 +189,7 @@ if __name__ == "__main__":
 
     #####################################################
     # Batching silo files
-    neq_batched_silos = util.batch_silos(
+    neq_batched_silos = nebula.Silo.batch(
         neq_silo_dir,
         neq_filebase,
         start_time=neq_start_time,
@@ -198,7 +198,7 @@ if __name__ == "__main__":
         out_frequency=out_frequency
     )
     print(" Finished batching non-equilibrium silo files")
-    ieq_batched_silos = util.batch_silos(
+    ieq_batched_silos = nebula.Silo.batch(
         ieq_silo_dir,
         ieq_filebase,
         start_time=ieq_start_time,
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     if key == "y":
         print(" Continuing execution...")
     else:
-        util.nebula_info("Resetting parameters before the next run")
+        nebula.get_logger(__name__).info("Resetting parameters before the next run")
         exit(0)
 
     if len(neq_batched_silos) != 1 or len(ieq_batched_silos) != 1:
