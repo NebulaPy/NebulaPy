@@ -27,7 +27,7 @@ logger = get_logger(__name__)
 
 class sed:
 
-    def __init__(self, energy_bins, plot=None, pion=None, verbose=False):
+    def __init__(self, energy_bins, plot=None, pion=None, progress=False):
 
         # get database
         database = os.environ.get("NEBULAPYDB")
@@ -38,7 +38,7 @@ class sed:
         self.EnergyBins = energy_bins
         self.Plot = plot
         self.Pion = pion
-        self.Verbose = verbose
+        self.progress = progress
         self.container = {'energy_bins': self.EnergyBins,
                           'plot': self.Plot, 'pion': self.Pion}
         self.AtlasDatabase = os.path.join(database, "SED", "Atlas")
@@ -59,7 +59,7 @@ class sed:
             # Loop through the columns (inner loop)
             lambdaBin = []
             for energy in Ebin:
-                Lambda = const.ev2Ang / energy  # Waveleghts are given in Angstrom
+                Lambda = const.EV_ANGSTROM / energy  # Waveleghts are given in Angstrom
                 lambdaBin.append(Lambda)
             lambdaBin.reverse()
             given_lambdabins.append(lambdaBin)
@@ -86,7 +86,7 @@ class sed:
             completed=iteration + 1,
             total=Nmodels,
             unit="models",
-            enabled=self.Verbose,
+            enabled=self.progress,
         )
 
 
@@ -201,14 +201,21 @@ class sed:
 
         # Add clumping factor to the container
         # Get clumping factor for the specific grid
-        Clump = const.ClumpFactor[grid_name]
+        Clump = const.POWR_CLUMPING_FACTORS[grid_name]
         self.container['CLUMP'] = Clump
 
         # Calculating stellar radius for each models
         R_star = []
         for i in range(len(bundle_modelparams['MODEL'])):
-            velocity = float(bundle_modelparams['V_INF'][i]) / 2500.0
-            massloss = 10 ** float(bundle_modelparams['LOG MDOT'][i]) * math.sqrt(Clump) * 10 ** 4
+            velocity = (
+                float(bundle_modelparams['V_INF'][i])
+                / const.POWR_REFERENCE_VELOCITY_KM_S
+            )
+            massloss = (
+                10 ** float(bundle_modelparams['LOG MDOT'][i])
+                * math.sqrt(Clump)
+                * const.POWR_MASS_LOSS_SCALE
+            )
             radius = float(bundle_modelparams['R_TRANS'][i]) / (velocity / massloss) ** (2 / 3)
             R_star.append(radius)
         # Adding calculated stellar radius to the bundle and container
@@ -259,16 +266,16 @@ class sed:
     # Blackbody bin fraction
     ######################################################################################
     def blackbody_binfrac_func(self, T, E):
-        factor = 2.0*const.pi / pow(const.h, 3.0) / pow(const.c, 2.0) \
-                 / const.stefanBoltzmann / pow(T, 4.0)
-        return factor * pow(E, 3.0) / (math.exp(E / const.kB / T) - 1.0)
+        factor = 2.0*const.PI / pow(const.PLANCK_CONSTANT, 3.0) / pow(const.SPEED_OF_LIGHT, 2.0) \
+                 / const.STEFAN_BOLTZMANN_CONSTANT / pow(T, 4.0)
+        return factor * pow(E, 3.0) / (math.exp(E / const.BOLTZMANN_CONSTANT / T) - 1.0)
 
     ######################################################################################
     # Blackbody flux lambda
     ######################################################################################
     def blackbody_flam(self, T, lam):
-        factor = 2.0*const.pi*const.h*pow(const.c, 2.0) / pow(lam*const.Ang2cm, 4.0) / lam
-        return factor / (math.exp(const.h * const.c / (lam*const.Ang2cm) / const.kB / T) - 1.0)
+        factor = 2.0*const.PI*const.PLANCK_CONSTANT*pow(const.SPEED_OF_LIGHT, 2.0) / pow(lam*const.ANGSTROM_TO_CM, 4.0) / lam
+        return factor / (math.exp(const.PLANCK_CONSTANT * const.SPEED_OF_LIGHT / (lam*const.ANGSTROM_TO_CM) / const.BOLTZMANN_CONSTANT / T) - 1.0)
 
     ######################################################################################
     # Binning Atlas Spectral Energy Distribution
@@ -499,7 +506,15 @@ class sed:
                 total_flux_10pc = np.trapz(np.asarray(model_flux), np.asarray(model_lambda))
                 # However this is the total flux at 10 pc. The total flux at the stellar
                 # surface is
-                total_flux_Rstar = total_flux_10pc * 10 ** 2.0 / (self.R_star[model_index] * const.radiusSun / const.parsec) ** 2.0
+                total_flux_Rstar = (
+                    total_flux_10pc
+                    * const.POWR_FLUX_DISTANCE_PC**2
+                    / (
+                        self.R_star[model_index]
+                        * const.SOLAR_RADIUS
+                        / const.PARSEC
+                    ) ** 2.0
+                )
                 # Append the Total Flux into TotFluxSe
                 total_flux_set.append(total_flux_Rstar)
 
@@ -563,10 +578,10 @@ class sed:
         self.container['model'] = 'Blackbody'
         self.Model = 'Blackbody'
         prefix_comment = 'blackbody binning'
-        self.Nmodels = len(const.blackbody_temp_table)
+        self.Nmodels = len(const.BLACKBODY_TEMPERATURE_GRID)
 
         self.sed_set_name = 'blackbody'
-        self.Teff = const.blackbody_temp_table
+        self.Teff = const.BLACKBODY_TEMPERATURE_GRID
 
         model_flux_set = []
         model_lambda_set = []
@@ -579,7 +594,7 @@ class sed:
 
         # **********************************************************
         # performing flux binning for black body spectrum for different temperatures
-        for model_index, Teff in enumerate(const.blackbody_temp_table):
+        for model_index, Teff in enumerate(const.BLACKBODY_TEMPERATURE_GRID):
 
             self.progress_bar(model_index, self.Nmodels,
                               prefix=prefix_comment)
@@ -588,10 +603,10 @@ class sed:
             for Ebin in self.EnergyBins:
                 norm_flux_bin.append(
                     integrate.quad(lambda E: self.blackbody_binfrac_func(Teff, E),
-                                   Ebin[0]*const.ev2Erg, Ebin[1]*const.ev2Erg)[0])
+                                   Ebin[0]*const.EV_TO_ERG, Ebin[1]*const.EV_TO_ERG)[0])
 
             binned_flux_set.append(norm_flux_bin)
-            total_flux = const.stefanBoltzmann * pow(Teff, 4.0)
+            total_flux = const.STEFAN_BOLTZMANN_CONSTANT * pow(Teff, 4.0)
             total_flux_set.append(total_flux)
 
             model_flux = []
@@ -648,7 +663,7 @@ class sed:
 
             fig, axs = plt.subplots(2, 1, figsize=(12, 6))
             # converting model lambda to electron volt unit
-            model_energy = [const.ev2Ang / Lambda for Lambda in self.model_lambda_set[model_index]]
+            model_energy = [const.EV_ANGSTROM / Lambda for Lambda in self.model_lambda_set[model_index]]
 
             # SubPlot 1: Plot the original model flux data
             axs[0].plot(model_energy, self.model_flux_set[model_index], label="Original Flam",
@@ -704,8 +719,7 @@ class sed:
     ######################################################################################
     def pion_format(self, pion_format_path, binned_flux_set, model_info):
 
-        if self.Verbose:
-            logger.info("Saving binned %s SED in PION format", self.Model.lower())
+        logger.info("Saving binned %s SED in PION format", self.Model.lower())
 
         if not pion_format_path.endswith('/'):
             pion_format_path += '/'
@@ -798,7 +812,7 @@ class sed:
         # append bundled model to the container
         self.container.update(bundle_modelparams)
 
-        Clump = const.ClumpFactor[grid_name]
+        Clump = const.POWR_CLUMPING_FACTORS[grid_name]
         self.container['CLUMP'] = Clump
 
         # ******************************************************************
@@ -873,10 +887,21 @@ class sed:
                         model_flux.append(float(columns[1])) # given in Janskys at 1kpc
 
                 # Convert the frequencies (in 10^15 Hz) to angstroms
-                model_lambda = [const.c * 1.0E+8 / (freq * 1e15) for freq in model_frequency]
+                model_lambda = [
+                    const.SPEED_OF_LIGHT * const.CM_TO_ANGSTROM
+                    / (freq * const.PETAHERTZ_TO_HERTZ)
+                    for freq in model_frequency
+                ]
                 model_loglambda = np.log10(model_lambda)
                 # Convert the fluxes (in jansky at 1 kpc) to erg s-1 cm-2 A-1, correct for the distance, and take log10
-                model_flux = [(flux * 1e-23 * const.c * 1.0E+8 / lam ** 2) for flux, lam in zip(model_flux, model_lambda)]
+                model_flux = [
+                    flux
+                    * const.JANSKY_TO_CGS_FLUX_DENSITY
+                    * const.SPEED_OF_LIGHT
+                    * const.CM_TO_ANGSTROM
+                    / lam**2
+                    for flux, lam in zip(model_flux, model_lambda)
+                ]
                 model_logflux = np.log10(model_flux)
                 # Note the model flux is calculated at 1 kpc
 
@@ -910,8 +935,8 @@ class sed:
                 total_flux_1kpc = np.trapz(np.asarray(model_flux), np.asarray(model_lambda))
                 # However this is the total flux at 1 kpc. The total flux at the stellar
                 # surface is
-                total_flux_Rstar = total_flux_1kpc * 1000 ** 2.0 / (
-                        self.R_star[model_index] * const.radiusSun / const.parsec) ** 2.0
+                total_flux_Rstar = total_flux_1kpc * const.CMFGEN_FLUX_DISTANCE_PC**2 / (
+                        self.R_star[model_index] * const.SOLAR_RADIUS / const.PARSEC) ** 2.0
                 # Append the Total Flux into TotFluxSet
                 total_flux_set.append(total_flux_Rstar)
 

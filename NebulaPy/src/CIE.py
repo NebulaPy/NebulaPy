@@ -9,8 +9,8 @@ logger = get_logger(__name__)
 
 class cieMode:
 
-    def __init__(self, verbose=False):
-        self.verbose = verbose
+    def __init__(self, progress=False):
+        self.progress = progress
 
         # get database
         database = os.environ.get("NEBULAPYDB")
@@ -36,8 +36,7 @@ class cieMode:
         header = None
         data = []
 
-        if self.verbose:
-            logger.info("Loading collision ionization equilibrium table")
+        logger.info("Loading collision ionization equilibrium table")
 
         with open(cie_file, "r") as f:
 
@@ -47,7 +46,7 @@ class cieMode:
                 lines,
                 description="Importing CIE grid",
                 unit="lines",
-                enabled=self.verbose,
+                enabled=self.progress,
             )
 
             for line in iterator:
@@ -84,12 +83,11 @@ class cieMode:
             dtype=str
         )
 
-        if self.verbose:
-            logger.info(
-                "CIE table loaded: %s temperature points, %s ion-fraction columns",
-                self.data.shape[0],
-                self.data.shape[1] - 1,
-            )
+        logger.info(
+            "CIE table loaded: %s temperature points, %s ion-fraction columns",
+            self.data.shape[0],
+            self.data.shape[1] - 1,
+        )
 
     ######################################################################################
     # Interpolate ion fraction for a given ion and temperature(s)

@@ -109,7 +109,7 @@ if __name__ == "__main__":
     N_time_instant = len(batched_silos)
 
     # Initialize the PION class to handle simulation data
-    pion = nebula.pion(batched_silos, verbose=True)
+    pion = nebula.pion(batched_silos, progress=True)
 
     # Calculates and stores geometric grid parameters.
     # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -240,20 +240,20 @@ if __name__ == "__main__":
     os.makedirs(S3P_ion_output_dir, exist_ok=True)
 
     # Initialize the emission line calculations for each ion
-    H_line_emission = nebula.line_emission(H_pion_ion, verbose=True)
-    He_line_emission = nebula.line_emission(He_pion_ion, verbose=True)
-    He1P_line_emission = nebula.line_emission(He1P_pion_ion, verbose=True)
-    C_line_emission = nebula.line_emission(C_pion_ion, verbose=True)
-    C2P_line_emission = nebula.line_emission(C2P_pion_ion, verbose=True)
-    N1P_line_emission = nebula.line_emission(N1P_pion_ion, verbose=True)
-    N2P_line_emission = nebula.line_emission(N2P_pion_ion, verbose=True)
-    O1P_line_emission = nebula.line_emission(O1P_pion_ion, verbose=True)
-    O2P_line_emission = nebula.line_emission(O2P_pion_ion, verbose=True)
-    Ne1P_line_emission = nebula.line_emission(Ne1P_pion_ion, verbose=True)
-    Ne2P_line_emission = nebula.line_emission(Ne2P_pion_ion, verbose=True)
-    S1P_line_emission = nebula.line_emission(S1P_pion_ion, verbose=True)
-    S2P_line_emission = nebula.line_emission(S2P_pion_ion, verbose=True)
-    S3P_line_emission = nebula.line_emission(S3P_pion_ion, verbose=True)
+    H_line_emission = nebula.line_emission(H_pion_ion)
+    He_line_emission = nebula.line_emission(He_pion_ion)
+    He1P_line_emission = nebula.line_emission(He1P_pion_ion)
+    C_line_emission = nebula.line_emission(C_pion_ion)
+    C2P_line_emission = nebula.line_emission(C2P_pion_ion)
+    N1P_line_emission = nebula.line_emission(N1P_pion_ion)
+    N2P_line_emission = nebula.line_emission(N2P_pion_ion)
+    O1P_line_emission = nebula.line_emission(O1P_pion_ion)
+    O2P_line_emission = nebula.line_emission(O2P_pion_ion)
+    Ne1P_line_emission = nebula.line_emission(Ne1P_pion_ion)
+    Ne2P_line_emission = nebula.line_emission(Ne2P_pion_ion)
+    S1P_line_emission = nebula.line_emission(S1P_pion_ion)
+    S2P_line_emission = nebula.line_emission(S2P_pion_ion)
+    S3P_line_emission = nebula.line_emission(S3P_pion_ion)
 
     # Check the requested lines in the database for each ion
     print(f" ---------------------------")

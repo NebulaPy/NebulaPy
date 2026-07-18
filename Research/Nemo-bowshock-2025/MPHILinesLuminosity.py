@@ -172,7 +172,7 @@ if __name__ == "__main__":
     N_time_instant = len(batched_silos)
 
     # Initialize the PION class to handle simulation data
-    pion = nebula.pion(batched_silos, verbose=True)
+    pion = nebula.pion(batched_silos, progress=True)
     # Load chemistry and geometry data
     pion.load_chemistry()
     pion.load_geometry(scale='cm')
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     print(f" H Lyman α recombination pyneb lines: {', '.join(map(str, PyNeb_HLyAlphaLines))}  \u212B")
 
     # Initialize the emission line calculations for each ion
-    line_emission = nebula.line_emission(pion_ion, verbose=True)
+    line_emission = nebula.line_emission(pion_ion)
 
     # Check the requested lines in the database for each ion
     print(f" ---------------------------")

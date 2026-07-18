@@ -25,12 +25,11 @@ class pyneb:
     ######################################################################################
     # class initialization
     ######################################################################################
-    def __init__(self, temperature, ne, pion_ion=None, verbose=False):
+    def __init__(self, temperature, ne, pion_ion=None):
 
         self.pion_ion = pion_ion
         self.temperature = temperature
         self.ne = ne
-        self.verbose = verbose
 
         # Count the number of arguments that are not None
         non_none_count = sum(arg is not None for arg in [pion_ion])
@@ -40,7 +39,7 @@ class pyneb:
             raise NebulaError("invalid arguments: set 'pion_ion' for PyNeb class")
 
         if pion_ion is not None:
-            if pion_ion in const.top_level_ions:
+            if pion_ion in const.FULLY_IONIZED_IONS:
                 logger.warning("top-level ions are not PION species, processing as PyNeb species")
             self.pyneb_ion_element, self.pyneb_ion_spectral_level = self.get_pyneb_symbol(pion_ion)
             self.pyneb_ion_name = self.pyneb_ion_element + str(self.pyneb_ion_spectral_level)
@@ -48,15 +47,13 @@ class pyneb:
 
             all_recombination_ions = pyneb_atomic_data.getAllAtoms(coll=False, rec=True)
             if self.pyneb_ion_name in all_recombination_ions:
-                if self.verbose:
-                    logger.info("PyNeb recombination data found for %s", self.Spectroscopic)
+                logger.debug("PyNeb recombination data found for %s", self.Spectroscopic)
 
                 # begin todo: when implemting for other species, modify below
                 if self.pyneb_ion_element != 'H':
                     raise NebulaError(f"PyNeb is implemented only for H I recombination lines, not {self.Spectroscopic}")
                 else:
-                    if self.verbose:
-                        logger.warning("pyneb class only implemented for H I recombination lines")
+                    logger.warning("PyNeb is currently implemented only for H I recombination lines")
                     # important: only implemented for recombination lines of hydrogen
                     pn.atomicData.setDataFile('h_i_rec_SH95.hdf5')
                     self.pyneb_recomb_ion = RecAtom(self.pyneb_ion_element, self.pyneb_ion_spectral_level)
@@ -116,12 +113,10 @@ class pyneb:
         ion_stage = int(ion_stage) if ion_stage else 0  # default to 0 if missing
 
         roman_stage = ion_stage + 1
-        roman_numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"]
-
-        if roman_stage < 1 or roman_stage > len(roman_numerals):
+        if roman_stage < 1 or roman_stage > len(const.ROMAN_ION_STAGES):
             raise ValueError(f"Ionization stage out of range: {roman_stage}")
 
-        return f"{element} {roman_numerals[roman_stage - 1]}"
+        return f"{element} {const.ROMAN_ION_STAGES[roman_stage - 1]}"
 
     ######################################################################################
     # Get all recombination lines available in PyNeb for given ion
@@ -147,8 +142,7 @@ class pyneb:
         Returns:
             list of float: Sorted wavelengths of all available H I recombination lines.
         """
-        if self.verbose:
-            logger.info("Retrieving all PyNeb recombination lines for %s", self.Spectroscopic)
+        logger.debug("Retrieving all PyNeb recombination lines for %s", self.Spectroscopic)
 
         all_lines = []
         dummy_temperature = 1e4  # K
@@ -196,12 +190,10 @@ class pyneb:
             are the corresponding emissivity values (erg s^-1 sr^-1).
         """
 
-        # Verbose output to inform user of the action being performed
-        if self.verbose:
-            logger.info(
-                "Retrieving PyNeb recombination-line emissivities for %s",
-                self.Spectroscopic,
-            )
+        logger.debug(
+            "Retrieving PyNeb recombination-line emissivities for %s",
+            self.Spectroscopic,
+        )
 
         # Retrieve all available recombination lines for the current ion
         all_lines = self.get_allLines()
@@ -251,7 +243,13 @@ class pyneb:
             )
 
             # excluding emissivity value for temperature out of range for recombination caseB coeffcicient for hydrogen
-            invalid_temperature = ((self.temperature < 5.0E+02) | (self.temperature > 3.0E+04))
+            minimum_temperature, maximum_temperature = (
+                const.PYNEB_H_RECOMBINATION_TEMPERATURE_RANGE
+            )
+            invalid_temperature = (
+                (self.temperature < minimum_temperature)
+                | (self.temperature > maximum_temperature)
+            )
             # Now invalid_parameter_range is True where either temperature or ne is out of range
             specific_line_emissivity[invalid_temperature] = 1.0e-50
 
@@ -262,7 +260,7 @@ class pyneb:
                 )
 
             # Convert to emissivity per steradian
-            line_emissivity[line_str] = specific_line_emissivity * self.ne / (4.0 * const.pi)
+            line_emissivity[line_str] = specific_line_emissivity * self.ne / (4.0 * const.PI)
 
         # Return the dictionary containing emissivities for all requested lines
         return line_emissivity

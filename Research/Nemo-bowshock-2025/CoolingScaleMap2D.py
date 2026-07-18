@@ -85,7 +85,7 @@ batched_silos = nebula.Silo.batch(
 )
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 
 # Calculates and stores geometric grid parameters.
 # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -136,7 +136,7 @@ for step, silo_instant in enumerate(batched_silos):
     for index, ion in enumerate(ion_list):
 
         nebula.get_logger(__name__).info(f"computing {ion} cooling time-scale map")
-        cooling = nebula.cooling(pion_ion=ion, verbose=True)
+        cooling = nebula.cooling(pion_ion=ion)
 
         # Retrieve the ion number density
         n_ion = pion.get_ion_number_density(ion, silo_instant)
@@ -159,7 +159,7 @@ for step, silo_instant in enumerate(batched_silos):
     print(" calculating total cooling time-scale")
     # get total number density including all ions ntot
     for level in range(N_grid_level):
-        total_cooling_timescale[level] = 3.0 * const.kB * ntot[level] * temperature[level] / (2.0 * ne[level] * total_cooling_function[level])
+        total_cooling_timescale[level] = 3.0 * const.BOLTZMANN_CONSTANT * ntot[level] * temperature[level] / (2.0 * ne[level] * total_cooling_function[level])
 
     # Convert the list of arrays into a single array to find global min/max
     # Convert list → array if needed

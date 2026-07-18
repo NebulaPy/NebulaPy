@@ -35,7 +35,7 @@ batched_silos = nebula.Silo.batch(
 )
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 
 # Extract all chemistry information from the silo files into a chemistry container
 # This uses the first time instant's silo file to initialize
@@ -49,7 +49,7 @@ pion.spherical_grid(batched_silos[0])
 radius = pion.geometry_container['radius']
 shell_volume = pion.geometry_container['shell_volumes']
 
-O3P_line_emission = nebula.line_emission(O3P_pion_ion, verbose=True)  # Initialize the emission line calculation
+O3P_line_emission = nebula.line_emission(O3P_pion_ion)  # Initialize the emission line calculation
 
 # Open the output file and write the header
 with open(output_file, "w") as file:

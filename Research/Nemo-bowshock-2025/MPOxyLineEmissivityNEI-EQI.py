@@ -38,6 +38,8 @@ from matplotlib.gridspec import GridSpec
 from pypion.ReadData import ReadData
 import astropy.units as unit
 
+logger = nebula.get_logger(__name__)
+
 # Suppress specific warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning, message="divide by zero encountered in log10")
 
@@ -57,7 +59,7 @@ def compute_emissivity(workerQ, doneQ, timeout=0.1):
 
             ion_name, line_emission, lines, temperature, ne = task
 
-            print(f" Multiprocessing: computing the emissivity of {ion_name:<4} lines")
+            logger.debug("Computing emissivity for %s lines", ion_name)
 
             emissivity = line_emission.line_emissivity_2D_map(lines=lines, temperature=temperature, ne=ne, progress_bar=True)
 
@@ -65,7 +67,7 @@ def compute_emissivity(workerQ, doneQ, timeout=0.1):
             #    emissivity['He II 303.78'] < 1e-30, 1e-30, emissivity['He II 303.78'])
 
 
-            print(f" Multiprocessing: finished computing emissivity for {ion_name:<4} lines")
+            logger.debug("Finished computing emissivity for %s lines", ion_name)
             doneQ.put({ion_name: emissivity})  # Store result
         except queue.Empty:  # Use correct exception for empty queue
             raise nebula.NebulaError(f"Multiprocessing - no task in queue")
@@ -95,7 +97,6 @@ def run_multiprocessing_task(
     *,
     sleep_before_stop: float = 2.0,
     max_procs: Optional[int] = None,
-    verbose: bool = True,
 ) -> Dict[str, Any]:
     """
     task_packet maps:
@@ -114,9 +115,12 @@ def run_multiprocessing_task(
     if max_procs is not None:
         proc = max(1, min(proc, int(max_procs)))
 
-    if verbose:
-        print(f" Multiprocessing: utilizing {proc} core(s) (one core per ion)")
-        print(" Multiprocessing: adding tasks to queue")
+    logger.info(
+        "Multiprocessing: using %s processes for %s ion tasks",
+        proc,
+        len(keys),
+    )
+    logger.debug("Adding multiprocessing tasks to queue")
 
     species_lines_luminosity: Dict[str, Dict[str, Any]] = {}
 
@@ -130,8 +134,7 @@ def run_multiprocessing_task(
 
             workerQ.put((ion_name, line_emission, lines, temperature, ne))
 
-        if verbose:
-            print(" Multiprocessing: starting worker processes")
+        logger.debug("Starting multiprocessing worker processes")
 
         procs = []
         for _ in range(proc):
@@ -230,7 +233,7 @@ if __name__ == "__main__":
 
     ###############################################################
     # Initialize the PION class to extract microphysics data
-    neq_pion = nebula.pion(neq_batched_silos, verbose=True)
+    neq_pion = nebula.pion(neq_batched_silos, progress=True)
     # Load chemistry and geometry data
     neq_pion.load_chemistry()
     print(" Finished loading chemistry for non-equilibrium silo files")
@@ -238,7 +241,7 @@ if __name__ == "__main__":
     print(" Finished loading geometry for non-equilibrium silo files")
 
     # Initialize the PION class to extract microphysics data
-    ieq_pion = nebula.pion(ieq_batched_silos, verbose=True)
+    ieq_pion = nebula.pion(ieq_batched_silos, progress=True)
     # Load chemistry and geometry data
     ieq_pion.load_chemistry()
     print(" Finished loading chemistry for equilibrium silo files")
@@ -253,7 +256,7 @@ if __name__ == "__main__":
     line_emission_objects = {}
     for ion, lines in ion_lines.items():
         # Initialise emission object
-        le = nebula.line_emission(ion, verbose=True)
+        le = nebula.line_emission(ion)
         # availability check (if applicable)
         #if hasattr(le, "chianti_line_batch_check"):
         #    if ion == 'H':

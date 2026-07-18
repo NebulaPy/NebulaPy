@@ -10,8 +10,8 @@ dummy_ne = [1e+3, 1e+3]
 
 output_path = '/home/tony/Desktop/multi-ion-bowshock/NebulaPy/recombination-line'
 
-nebula_pyneb_ion = nebula.pyneb(pion_ion='H', temperature=dummy_temperature, ne=dummy_ne, verbose=True)
-nebula_chianti_ion = nebula.chianti(pion_ion='H', temperature=dummy_temperature, ne=dummy_ne, verbose=True)
+nebula_pyneb_ion = nebula.pyneb(pion_ion='H', temperature=dummy_temperature, ne=dummy_ne)
+nebula_chianti_ion = nebula.chianti(pion_ion='H', temperature=dummy_temperature, ne=dummy_ne)
 
 pyneb_lines = [6562.816, 4861.332]
 print(f" recombination line: {nebula_pyneb_ion.get_recomb_line_emissivity_for_list(line_list=pyneb_lines)}")

@@ -14,7 +14,7 @@ pion_format = '/home/tony/Desktop/NebulaPy/Research'
 
 bb_sed = nebula.sed(
     energy_bins=EnergyBins,
-    verbose=True,
+    progress=True,
     plot=plot_dir,
     pion=pion_format
 )

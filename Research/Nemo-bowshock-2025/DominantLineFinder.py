@@ -73,7 +73,7 @@ batched_silos = nebula.Silo.batch(
 )
 
 # Initialize the PION class to handle simulation data
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 
 # Load chemistry and geometry data
 pion.load_chemistry()
@@ -125,7 +125,7 @@ for step, silo_instant in enumerate(batched_silos):
 
     # Analyze each ion
     for ion in ion_list:
-        species_line_emission = nebula.line_emission(ion=ion, verbose=True)
+        species_line_emission = nebula.line_emission(ion=ion)
         n_species = pion.get_ion_number_density(ion, silo_instant)
 
         dominant_lines = species_line_emission.get_species_dominant_lines(

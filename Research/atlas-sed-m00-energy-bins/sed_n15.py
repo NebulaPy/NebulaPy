@@ -14,7 +14,7 @@ pion_format = '/mnt/local/jm/code/arun/NebulaPy/Research/atlas_n15'
 
 atlas_sed = nebula.sed(
     energy_bins=EnergyBins,
-    verbose=True,
+    progress=True,
     plot=None,
     pion=pion_format
 )

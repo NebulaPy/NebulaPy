@@ -87,7 +87,7 @@ def main():
 
 
     # Initialize the Pion class from NebulaPy, which handles the simulation data
-    pion = nebula.pion(batched_silos, verbose=True)
+    pion = nebula.pion(batched_silos, progress=True)
 
     # loading geometry attributes from the first silo file in the batch
     # and saves them into a geometry container.
@@ -113,7 +113,7 @@ def main():
         doBremsstrahlung=True,
         doFreebound=True,
         doLine=True,
-        doTwophoton=True,
+        doTwophoton=False,
         CIE=False,
         filtername=None,
         filterfactor=None,
@@ -121,7 +121,6 @@ def main():
         gridSize=3000,
         allLines=True,
         MPNcores=4,
-        verbose=False,
         progress=True,
     )
 

@@ -1,7 +1,7 @@
 import numpy as np
 import os
-from NebulaPy.src import Constants as const
 from scipy import interpolate
+from NebulaPy.src import Constants as const
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
 
 logger = get_logger(__name__)
@@ -11,19 +11,17 @@ class cooling():
     ######################################################################################
     # initializing the class cooling
     ######################################################################################
-    def __init__(self, pion_ion, verbose=True):
+    def __init__(self, pion_ion):
         """
         Initializes the cooling class for a specific pion ion
 
         Args:
             database (str): Path to the database directory containing the required data files.
             pion_ion (str): Ion symbol used to fetch the corresponding cooling data.
-            verbose (bool): If True, prints detailed logging information. Defaults to True.
 
         Raises:
             FileNotFoundError: If the required database or cooling table is missing.
         """
-        self.verbose = verbose
         self.ion = pion_ion
 
         # get database
@@ -35,8 +33,7 @@ class cooling():
         # Get the corresponding CHIANTI ion symbol for the given pion_ion
         chinati_ion = self.get_chianti_symbol(pion_ion)
 
-        if self.verbose:
-            logger.info("Initializing cooling calculation for %s", pion_ion)
+        logger.info("Initializing cooling calculation for %s", pion_ion)
         # Construct the filename for the ion cooling table based on the ion symbol
         ion_cooling_filename = chinati_ion + '.txt'
         cooling_database = os.path.join(database, "Cooling", "Chianti")
@@ -44,8 +41,7 @@ class cooling():
         # Full path to the cooling table
         self.ion_cooling_file = os.path.join(cooling_database, ion_cooling_filename)
 
-        if self.verbose:
-            logger.info("Retrieving %s cooling-rate data", pion_ion)
+        logger.info("Retrieving %s cooling-rate data", pion_ion)
 
         # Check if the cooling file exists, exit if not found
         if not os.path.exists(self.ion_cooling_file):
@@ -70,20 +66,19 @@ class cooling():
         performing an interpolation to get a smooth cooling rate function.
         """
 
-        if self.verbose:
-            logger.info("Computing cooling-rate interpolation for %s", self.ion)
+        logger.debug("Computing cooling-rate interpolation for %s", self.ion)
 
         # Prepare a list of temperatures (in Kelvin) from log(10) scale, ranging from 10^1 to 10^8
-        nemo_temperature = []
-        for i in range(81):
-            log_temp = 1.0 + i * 0.1
-            nemo_temperature.append(pow(10, log_temp))
+        nemo_temperature = [
+            10**log_temperature
+            for log_temperature in const.COOLING_LOG_TEMPERATURE_GRID
+        ]
 
         # Prepare a list of electron densities (in cm^-3) from log(10) scale, ranging from 10^0 to 10^6
-        nemo_ne = []
-        for i in range(13):
-            log_ne = i * 0.5
-            nemo_ne.append(pow(10, log_ne))
+        nemo_ne = [
+            10**log_density
+            for log_density in const.COOLING_LOG_ELECTRON_DENSITY_GRID
+        ]
 
         # Load the cooling data from the file
         ion_cooling_log_data = np.loadtxt(self.ion_cooling_file)

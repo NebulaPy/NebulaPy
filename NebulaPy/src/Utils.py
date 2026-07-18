@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from NebulaPy.src import Constants as const
 from NebulaPy.src.LoggingConfig import NebulaError
 
 
@@ -19,25 +20,18 @@ def get_element_symbol(ion):
 
 def get_spectroscopic_symbol(ion):
     """Convert a PION ion identifier to spectroscopic notation."""
-    roman_numerals = [
-        "I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X",
-        "XI", "XII", "XIII", "XIV", "XV", "XVI", "XVII", "XVIII",
-        "XIX", "XX", "XXI", "XXII", "XXIII", "XXIV", "XXV", "XXVI",
-        "XXVII",
-    ]
-
     normalized = ion.strip().replace("+", "")
     element = "".join(filter(str.isalpha, normalized)).capitalize()
     number = "".join(filter(str.isdigit, normalized))
     level = int(number) + 1 if number else 1
 
-    if not 1 <= level <= len(roman_numerals):
+    if not 1 <= level <= len(const.ROMAN_ION_STAGES):
         raise NebulaError(
             f"Ionisation level {level} out of supported range "
-            f"(1–{len(roman_numerals)})"
+            f"(1–{len(const.ROMAN_ION_STAGES)})"
         )
 
-    return f"{element} {roman_numerals[level - 1]}"
+    return f"{element} {const.ROMAN_ION_STAGES[level - 1]}"
 
 
 def getPionSymbol(chianti_symbol):

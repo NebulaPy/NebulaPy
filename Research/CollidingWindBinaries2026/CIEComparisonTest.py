@@ -14,7 +14,7 @@ OutputDir = '/Users/tony/Desktop/CWBs-NEMOv1/Post-Processing/XraySpectrum'  # Ou
 # CIE TEST ####################################################################
 print(" Comparing NebulaPy and CHIANTI CIE ion fractions")
 # Initialize nebulapy CIE module
-CIE = cieMode(verbose=True)
+CIE = cieMode(progress=True)
 CIE.loadCIEFile()
 
 

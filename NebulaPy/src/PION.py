@@ -17,9 +17,9 @@ class pion():
     maps from the Silo file.
     '''
 
-    def __init__(self, silo_set, verbose):
+    def __init__(self, silo_set, progress=True):
         self.silo_set = silo_set
-        self.verbose = verbose
+        self.progress = progress
         self.geometry_container = {}
         self.chemistry_container = {}
 
@@ -119,7 +119,6 @@ class pion():
         -------
 
         '''
-        # If verbose is enabled, print the chemistry code
         # Open the data for the first silo instant silo
         header_data = OpenData(self.silo_set[0])
         # Set the directory to '/header'
@@ -131,17 +130,14 @@ class pion():
         self.dim_scale = scale
 
         if coord_sys == 3:
-            if self.verbose:
-                logger.info("Loading geometry: %s coordinates", const.coordinate_system[coord_sys])
-                self.spherical_grid(self.silo_set[0])
+            logger.info("Loading geometry: %s coordinates", const.COORDINATE_SYSTEMS[coord_sys])
+            self.spherical_grid(self.silo_set[0])
         elif coord_sys == 2:
-            if self.verbose:
-                logger.info("Loading geometry: %s coordinates", const.coordinate_system[coord_sys])
-                self.cylindrical_grid(self.silo_set[0])
+            logger.info("Loading geometry: %s coordinates", const.COORDINATE_SYSTEMS[coord_sys])
+            self.cylindrical_grid(self.silo_set[0])
         elif coord_sys == 1:
-            if self.verbose:
-                logger.info("Loading geometry: %s coordinates", const.coordinate_system[coord_sys])
-                raise NebulaError(f"{const.coordinate_system[coord_sys]} coordinates not defined, todo list")
+            logger.info("Loading geometry: %s coordinates", const.COORDINATE_SYSTEMS[coord_sys])
+            raise NebulaError(f"{const.COORDINATE_SYSTEMS[coord_sys]} coordinates not defined, todo list")
 
 
     ######################################################################################
@@ -156,7 +152,7 @@ class pion():
         # Retrieve what coordinate system is used
         coord_sys = header_data.db.GetVar("coord_sys")
         if not coord_sys == 3:
-            raise NebulaError(f"Geometry mismatch {const.coordinate_system[coord_sys]}")
+            raise NebulaError(f"Geometry mismatch {const.COORDINATE_SYSTEMS[coord_sys]}")
         # Retrieve no of nested grid levels
         Nlevels = header_data.db.GetVar("grid_nlevels")
         Ngrid = header_data.db.GetVar("NGrid")
@@ -164,12 +160,11 @@ class pion():
         header_data.close()
 
         # save the dynamics and chemistry_flag values in the chemistry_container dictionary
-        self.geometry_container['coordinate_sys'] = const.coordinate_system[coord_sys]
+        self.geometry_container['coordinate_sys'] = const.COORDINATE_SYSTEMS[coord_sys]
         self.geometry_container['Nlevel'] = Nlevels
         self.geometry_container['Ngrid'] = Ngrid
         self.geometry_container['dim_scale'] = self.dim_scale
-        if self.verbose:
-            logger.info("Dimensional scale: %s", self.dim_scale)
+        logger.info("Dimensional scale: %s", self.dim_scale)
 
         # read silo file
         data = ReadData(silo_instant)
@@ -196,8 +191,7 @@ class pion():
         data.close()
 
         # calculating radial points
-        if self.verbose:
-            logger.info("Calculating radial points")
+        logger.debug("Calculating radial points")
         radius = []
         for level in range(Nlevels):
             level_min = rmin[level].value
@@ -228,12 +222,11 @@ class pion():
 
         # Todo: This has to be a separate method
         # calculating shell volumes
-        if self.verbose:
-            logger.info("Calculating shell volumes")
+        logger.debug("Calculating shell volumes")
         # Calculating the core volume
-        core = 4.0 * const.pi * radius[0] ** 3.0 / 3.0
+        core = 4.0 * const.PI * radius[0] ** 3.0 / 3.0
         # Calculating the shell volumes
-        shell_volumes = 4.0 * const.pi * (radius[1:] ** 3 - radius[:-1] ** 3) / 3.0
+        shell_volumes = 4.0 * const.PI * (radius[1:] ** 3 - radius[:-1] ** 3) / 3.0
         # Insert the core volume at the beginning of the shell_volumes array
         shell_volumes = np.insert(shell_volumes, 0, core)
 
@@ -256,7 +249,7 @@ class pion():
         # Retrieve what coordinate system is used
         coord_sys = header_data.db.GetVar("coord_sys")
         if not coord_sys == 2:
-            raise NebulaError(f"Geometry mismatch {const.coordinate_system[coord_sys]}")
+            raise NebulaError(f"Geometry mismatch {const.COORDINATE_SYSTEMS[coord_sys]}")
         # Retrieve no of nested grid levels
         Nlevel = header_data.db.GetVar("grid_nlevels")
         Ngrid = header_data.db.GetVar("NGrid")
@@ -264,12 +257,11 @@ class pion():
         header_data.close()
 
         # save the dynamics and chemistry_flag values in the chemistry_container dictionary
-        self.geometry_container['coordinate_sys'] = const.coordinate_system[coord_sys]
+        self.geometry_container['coordinate_sys'] = const.COORDINATE_SYSTEMS[coord_sys]
         self.geometry_container['Nlevel'] = Nlevel
         self.geometry_container['Ngrid'] = Ngrid
         self.geometry_container['dim_scale'] = self.dim_scale
-        if self.verbose:
-            logger.info("Geometry: %s grid levels, dimensional scale %s", Nlevel, self.dim_scale)
+        logger.info("Geometry: %s grid levels, dimensional scale %s", Nlevel, self.dim_scale)
 
         # Read the data from the current silo file
         dataio = ReadData(silo_instant)
@@ -277,8 +269,7 @@ class pion():
         mask = dataio.get_2Darray('NG_Mask')['data']
         dataio.close()  # Close the data file
 
-        if self.verbose:
-            logger.info("Retrieving simulation domain information")
+        logger.info("Retrieving simulation domain information")
 
         self.geometry_container['mask'] = mask
         del mask
@@ -327,11 +318,9 @@ class pion():
             r_squares = (r_cells + delta_r) ** 2 - r_cells ** 2
 
             # Compute cell volumes
-            cell_volume[level][:, :] = delta_z * np.pi * r_squares[:, None]
+            cell_volume[level][:, :] = delta_z * const.PI * r_squares[:, None]
 
-        # Convert to appropriate units
-        unit_factors = {'cm': unit.cm ** 3, 'pc': unit.pc ** 3}  # Add more cases as needed
-        return cell_volume #* unit_factors[self.dim_scale]
+        return cell_volume
 
 
     # ==================================================================================#
@@ -397,9 +386,7 @@ class pion():
                 # Exit with an error if the chemistry_code is not 'MPv10'
                 raise NebulaError(" PION is not running NEMO v1.0; NelubaPy functionality is limited.")
             else:
-                # If verbose is enabled, print the chemistry code
-                if self.verbose:
-                    logger.info("Loading chemistry: NEMO microphysics features")
+                logger.info("Loading chemistry: NEMO microphysics features")
 
                 # Loop through each process
                 for index, process in enumerate(processes):
@@ -419,9 +406,9 @@ class pion():
                 # mass_fraction
                 mass_fractions = {}
                 # list of element wise tracer list
-                elementWiseTracers = [[] for _ in range(len(const.nebula_elements))]
-                # list of element names from the nebula_elements dictionary keys
-                element_list = list(const.nebula_elements.keys())
+                elementWiseTracers = [[] for _ in const.SUPPORTED_ELEMENTS]
+                # Element symbols supported by NebulaPy chemistry.
+                element_list = list(const.SUPPORTED_ELEMENTS)
                 # save the number of tracers in the chemistry_container dictionary
                 self.chemistry_container['Ntracers'] = Ntracers
 
@@ -434,11 +421,10 @@ class pion():
                     chem_tracer = header_data.db.GetVar(tracer_index)[0]
 
                     # check if the tracer is an element ('X' denoting elemental mass fraction)
-                    if 'X' in chem_tracer and chem_tracer.replace("_", "").replace("X", "") in const.nebula_elements:
+                    if 'X' in chem_tracer and chem_tracer.replace("_", "").replace("X", "") in const.SUPPORTED_ELEMENTS:
                         # extract the element name
                         element = chem_tracer.replace("_", "").replace("X", "")
                         tracer_elements.append(element)
-                        # get the full element name from the nebula_elements dictionary
                         mass_fractions[element] = f'Tr{i:03}_' + chem_tracer
 
                         # get the index of the element in the element_list
@@ -448,7 +434,7 @@ class pion():
                             elementWiseTracers[element_index].append(f'Tr{i:03}_' + chem_tracer)
 
                     # check if the tracer is a corresponding ion
-                    if re.sub(r'\d{1,2}\+', '', chem_tracer) in const.nebula_elements:
+                    if re.sub(r'\d{1,2}\+', '', chem_tracer) in const.SUPPORTED_ELEMENTS:
                         self.chemistry_container[chem_tracer] = f'Tr{i:03}_' + chem_tracer.replace('+', 'p')
                         # extract the element name
                         element = re.sub(r'\d{1,2}\+', '', chem_tracer)
@@ -459,14 +445,12 @@ class pion():
                         # append pion chemical tracers
                         pion_chemical_tracers.append(chem_tracer)
 
-                # If verbose is enabled, print the number of chemical tracers
-                if self.verbose:
-                    logger.info(
-                        "Chemistry: %s elements, %s tracers",
-                        len(tracer_elements),
-                        Ntracers,
-                    )
-                    logger.info("Elements included: %s", ", ".join(tracer_elements))
+                logger.info(
+                    "Chemistry: %s elements, %s tracers",
+                    len(tracer_elements),
+                    Ntracers,
+                )
+                logger.info("Elements included: %s", ", ".join(tracer_elements))
 
                 # save mass fraction to chemistry_container dictionary
                 #self.chemistry_container['mass_fractions'] = mass_fractions
@@ -482,7 +466,7 @@ class pion():
         nebulapy_all_species = pion_chemical_tracers
         # Upgrade pion_tracers to include top ion
         for element in tracer_elements:
-            Z = const.atomic_number[element]
+            Z = const.ATOMIC_NUMBER[element]
             top_ion = f"{element}{Z}+"
             if top_ion not in pion_chemical_tracers:
                 nebulapy_all_species.append(top_ion)
@@ -563,7 +547,7 @@ class pion():
         for element in elements:
             # Retrieve tracers for the element
             element_tracers = [self.chemistry_container[f"{element}{q}+" if q > 0 else element]
-                               for q in range(const.atomic_number[element])]
+                               for q in range(const.ATOMIC_NUMBER[element])]
 
             tracers.append(element_tracers)
 
@@ -623,13 +607,13 @@ class pion():
         element = get_element_symbol(ion)
 
         # Check if the ion meets the criteria for being a top-level ion:
-        # 1. It is listed in the predefined set of top-level ions (const.top_level_ions).
+        # 1. It is listed in the predefined set of top-level ions (const.FULLY_IONIZED_IONS).
         # 2. Its associated element is a recognized tracer element in the chemistry model.
-        if ion in const.top_level_ions and element in self.chemistry_container['tracer_elements']:
-            if self.verbose:
-                # If verbose mode is enabled, print a message indicating that the ion
-                # is a top-level ion but is not recognized as a species in NEMO v1.0 chemistry.
-                logger.info("Ion '%s' is a top-level ion and not an explicit NEMO species", ion)
+        if ion in const.FULLY_IONIZED_IONS and element in self.chemistry_container['tracer_elements']:
+            logger.debug(
+                "Ion '%s' is a top-level ion and not an explicit NEMO species",
+                ion,
+            )
             return True  # The ion qualifies as a top-level ion.
         else:
             # If the ion does not meet the criteria, return False.
@@ -695,9 +679,8 @@ class pion():
                 elif not terminate:
                     logger.warning(f"Ion '{ion}' not recognized")
 
-            # If verbose mode is enabled and the ion is found, print confirmation
-            if self.verbose and found_ion:
-                logger.info("Ion check: %s found in chemistry container", ion)
+            if found_ion:
+                logger.debug("Ion check: %s found in chemistry container", ion)
 
             return filtered_ion_list
 
@@ -733,9 +716,8 @@ class pion():
                     elif not terminate:
                         logger.warning(f"Ion '{ion}' not recognized")
 
-                # If verbose mode is enabled and the ion is found, print confirmation
-                if self.verbose and found_ion:
-                    logger.info("Ion check: %s found in chemistry container", ion)
+                if found_ion:
+                    logger.debug("Ion check: %s found in chemistry container", ion)
 
             return filtered_ion_list
 
@@ -841,7 +823,7 @@ class pion():
     ######################################################################################
     # get ion mass fraction values
     ######################################################################################
-    def get_ion_values(self, ion, silo_instant, verbose=True):
+    def get_ion_values(self, ion, silo_instant):
         '''
         This methods will return the ion mass fraction value set
 
@@ -858,9 +840,11 @@ class pion():
         element = get_element_symbol(ion)
         ion_tracer = None
         if ion not in self.chemistry_container:
-            if ion in const.top_level_ions and element in self.chemistry_container['mass_fractions']:
-                if verbose:
-                    logger.info(f"ion '{ion}' is a top-level ion, not a recognized species in NEMO")
+            if ion in const.FULLY_IONIZED_IONS and element in self.chemistry_container['mass_fractions']:
+                logger.debug(
+                    "Ion '%s' is a top-level ion, not an explicit NEMO species",
+                    ion,
+                )
                 return None
             else:
                 raise NebulaError(f"ion {ion} is not in silo file")
@@ -872,7 +856,7 @@ class pion():
     ######################################################################################
     # get electron number density
     ######################################################################################
-    def get_ne(self, silo_instant, verbose=True):
+    def get_ne(self, silo_instant, progress=None):
         """
         Return electron number density for a specific silo file.
         """
@@ -901,7 +885,7 @@ class pion():
                     massfrac_sum += charge * ion_density
 
                 massfrac_sum += atomic_number * np.maximum(top_ion, 0.0)
-                ne += massfrac_sum / const.mass[element_name]
+                ne += massfrac_sum / const.ATOMIC_MASS[element_name]
 
             return ne * density
 
@@ -921,12 +905,13 @@ class pion():
 
             ne = [np.zeros(shape) for shape in shape_list]
 
+            show_progress = self.progress if progress is None else progress
             level_iterator = track(
                 range(Nlevel),
                 total=Nlevel,
                 description="Calculating electron density",
                 unit="grid levels",
-                enabled=verbose,
+                enabled=show_progress,
             )
 
             for level in level_iterator:
@@ -952,7 +937,7 @@ class pion():
 
                     massfrac_sum += atomic_number * np.maximum(top_ion[level], 0.0)
 
-                    ne[level] += massfrac_sum / const.mass[element_name]
+                    ne[level] += massfrac_sum / const.ATOMIC_MASS[element_name]
 
             ne = [density[level] * ne[level] for level in range(Nlevel)]
 
@@ -961,11 +946,11 @@ class pion():
     ######################################################################################
     # get top ion mass fraction
     ######################################################################################
-    def get_top_ion_massfrac(self, ion, silo_instant, verbose=True):
+    def get_top_ion_massfrac(self, ion, silo_instant):
 
         # Extract the element string from ion string
         element = get_element_symbol(ion)
-        atomic_number = const.atomic_number[element]
+        atomic_number = const.ATOMIC_NUMBER[element]
         element_tracer = self.chemistry_container['mass_fractions'][element]
         # set elemental mass fraction to top level ion mass fraction
         top_ion_mass_frac = self.get_parameter(element_tracer, silo_instant)
@@ -977,12 +962,12 @@ class pion():
             for charge in range(atomic_number):
                 if charge == 0:
                     ion = f"{element}"
-                    ion_value = self.get_ion_values(ion, silo_instant, verbose=verbose)
+                    ion_value = self.get_ion_values(ion, silo_instant)
                     top_ion_mass_frac = [top_ion_mass_frac[level] - ion_value[level] for level in range(Nlevel)]
 
                 else:
                     ion = f"{element}{charge}+"  # Adding + for positive ions
-                    ion_value = self.get_ion_values(ion, silo_instant, verbose=verbose)
+                    ion_value = self.get_ion_values(ion, silo_instant)
                     top_ion_mass_frac = [top_ion_mass_frac[level] - ion_value[level] for level in range(Nlevel)]
 
         top_ion_mass_frac = [np.maximum(top_ion_mass_frac[level], 0.0) for level in range(Nlevel)]
@@ -993,7 +978,7 @@ class pion():
     ######################################################################################
     # get get ion number density
     ######################################################################################
-    def get_ion_number_density(self, ion, silo_instant, verbose=True):
+    def get_ion_number_density(self, ion, silo_instant):
         """
         Calculates the number density of a given ion across different nested grid levels.
 
@@ -1021,7 +1006,7 @@ class pion():
         element = get_element_symbol(ion)
 
         # Get the mass of the element from constants
-        element_mass = const.mass[element]
+        element_mass = const.ATOMIC_MASS[element]
 
         if self.geometry_container['coordinate_sys'] == 'spherical':
             # TODO: Implement the calculation for 1D spherically symmetric coordinate system
@@ -1034,18 +1019,17 @@ class pion():
             Nlevel = self.geometry_container['Nlevel']
 
             # Check if the ion is a top-level ion (no sub-ion values available)
-            if self.get_ion_values(ion, silo_instant, verbose=verbose) is None:
-                if verbose:
-                    logger.info("Computing number density for top-level ion %s", ion)
+            if self.get_ion_values(ion, silo_instant) is None:
+                logger.debug("Computing number density for top-level ion %s", ion)
                 # Retrieve the mass fraction for the top-level ion
-                ion_mass_frac = self.get_top_ion_massfrac(ion, silo_instant, verbose=verbose)
+                ion_mass_frac = self.get_top_ion_massfrac(ion, silo_instant)
 
                 # Calculate the ion number density for each grid level
                 for level in range(Nlevel):
                     ion_num_density[level] = density[level] * ion_mass_frac[level] / element_mass
             else:
                 # Retrieve the mass fraction for sub-level ions
-                ion_mass_frac = self.get_ion_values(ion, silo_instant, verbose=verbose)
+                ion_mass_frac = self.get_ion_values(ion, silo_instant)
 
                 # Calculate the ion number density for each grid level
                 for level in range(Nlevel):
@@ -1070,12 +1054,11 @@ class pion():
                 species_list,
                 description="Calculating number densities",
                 unit="species",
-                enabled=self.verbose,
+                enabled=self.progress,
         ):
             species_number_densities[ion] = self.get_ion_number_density(
                 ion=ion,
                 silo_instant=silo_instant,
-                verbose=False
             )
 
         return species_number_densities
@@ -1084,7 +1067,7 @@ class pion():
     ######################################################################################
     # get get total number density ion number density
     ######################################################################################
-    def get_ntot(self, silo_instant, verbose=True):
+    def get_ntot(self, silo_instant):
 
         # 1 dimensional (spherical)
         if self.geometry_container['coordinate_sys'] == 'spherical':
@@ -1096,8 +1079,7 @@ class pion():
             # Get the number of nested grid levels in the geometry container.
             Nlevel = self.geometry_container['Nlevel']
 
-            if verbose:
-                logger.info("Calculating total number density for each grid level")
+            logger.info("Calculating total number density for each grid level")
 
             # Retrieve the density data from the input file at the current simulation instant.
             density = self.get_parameter("Density", silo_instant)
@@ -1129,7 +1111,7 @@ class pion():
                 top_ion_massfrac = self.get_parameter(element[0], silo_instant)
                 # Add neutral mass fraction into total number density
                 for level in range(Nlevel):
-                    n_total[level] += neutral_massfrac[level] / const.mass[element_name]
+                    n_total[level] += neutral_massfrac[level] / const.ATOMIC_MASS[element_name]
 
                 # For each subsequent ion
                 for i, ion in enumerate(element[1:], start=1):
@@ -1140,15 +1122,15 @@ class pion():
                     for level in range(Nlevel):
                         top_ion_massfrac[level] -= ion_massfrac[level]
                         massfrac_sum[level] += charge * ion_massfrac[level]  # Update mass fraction sum by ion charge.
-                        n_total[level] += ion_massfrac[level] / const.mass[element_name]
+                        n_total[level] += ion_massfrac[level] / const.ATOMIC_MASS[element_name]
 
                 # Finalize mass fraction sum and update electron density for each grid level.
                 for level in range(Nlevel):
                     # Add contribution of the top ion with atomic number, ensuring non-negative values.
                     massfrac_sum[level] += atomic_number * np.maximum(top_ion_massfrac[level], 0.0)
                     # Calculate electron number density using mass fraction sum and atomic mass.
-                    ne[level] += massfrac_sum[level] / const.mass[element_name]
-                    n_total[level] += top_ion_massfrac[level] / const.mass[element_name]
+                    ne[level] += massfrac_sum[level] / const.ATOMIC_MASS[element_name]
+                    n_total[level] += top_ion_massfrac[level] / const.ATOMIC_MASS[element_name]
 
             # Scale the electron number density by the density for each grid level.
             ne = [density[level] * ne[level] for level in range(Nlevel)]
@@ -1157,6 +1139,5 @@ class pion():
             for level in range(Nlevel):
                 n_total[level] += ne[level]
 
-            if verbose:
-                logger.info("Total number-density calculation completed")
+            logger.info("Total number-density calculation completed")
             return n_total

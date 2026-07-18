@@ -271,7 +271,7 @@ snapshots = nebula.Silo.batch(
     time_unit="days",
 )
 
-pion = nebula.pion(snapshots, verbose=True)
+pion = nebula.pion(snapshots, progress=True)
 pion.load_geometry(scale="cm")
 pion.load_chemistry()
 

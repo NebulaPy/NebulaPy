@@ -14,11 +14,11 @@ pion_format = '/home/tony/Desktop/NebulaPy/Research'
 
 atlas_sed = nebula.sed(
     energy_bins=EnergyBins,
-    verbose=True,
+    progress=True,
     plot=plot_dir,
     pion=pion_format
 )
 
-#atlas_sed = nebula.sed(EnergyBins, verbose=True)
+#atlas_sed = nebula.sed(EnergyBins, progress=True)
 
 atlas_sed.CastelliKuruczAtlas(metallicity=0.0, gravity=4.5)

@@ -51,7 +51,7 @@ batched_silos = nebula.Silo.batch(
 )
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 
 # Calculates and stores geometric grid parameters.
 # For example, in a spherical geometry, it extracts radius and shell volumes

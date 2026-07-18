@@ -71,7 +71,7 @@ else:
 
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 
 # loading geometry attributes from the first silo file in the batch
 # and saves them into a geometry container.
@@ -104,7 +104,7 @@ NebulaSpectrum = nebula.spectrum(
     userGrid=True,
     gridSize=3000,
     allLines=True,
-    verbose=True
+    progress=True
 )
 
 wavelength = NebulaSpectrum.WavelengthGrid

@@ -17,7 +17,7 @@ pion_format = '/home/tony/Desktop/NebulaPy/Research'
 cmfgen_sed = nebula.sed(
     database='/home/tony/Desktop/NebulaPy/NebulaPy-DB',
     energy_bins=EnergyBins,
-    verbose=True,
+    progress=True,
     plot=plot_dir,
     pion=pion_format
 )

@@ -1,12 +1,14 @@
 numpy
-scipy
+# Temporary compatibility constraint: ChiantiPy 0.16 reads the H-like and
+# He-like two-photon y0 coordinates as numpy.str_ arrays. SciPy 1.18 rejects
+# those values in splrep(), causing X-ray spectrum calculations with
+# two-photon emission enabled to fail with "must be real number, not numpy.str_".
+# Remove this upper bound after ChiantiPy converts both y0 arrays to float64.
+scipy<1.18
 requests
 matplotlib
-ipyparallel
 ChiantiPy
 pypion
-pandas
-h5py
 astropy
 PyNeb
 rich

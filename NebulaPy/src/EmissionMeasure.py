@@ -1,17 +1,9 @@
 import numpy as np
-import math
 from astropy import units as u
-import time
-from NebulaPy.src import Constants as const
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
 from NebulaPy.src.NebulaProgress import track
 
 logger = get_logger(__name__)
-
-pi = math.pi
-m_p = 1.6726219e-24  # g
-k = 1.38064852e-16  # erg/K
-mu = 0.61  # mH
 
 import warnings
 # Suppress specific warnings
@@ -23,9 +15,9 @@ class emissionMeasure():
     ######################################################################################
     # initializing
     ######################################################################################
-    def __init__(self, Tmin, Tmax, Nbins, verbose=False):
+    def __init__(self, Tmin, Tmax, Nbins, progress=False):
 
-        self.verbose = verbose
+        self.progress = progress
         self.Tmin = Tmin
         self.Tmax = Tmax
         self.Nbins = Nbins
@@ -97,7 +89,7 @@ class emissionMeasure():
                 species_list,
                 description="Computing species DEM",
                 unit="species",
-                enabled=self.verbose,
+                enabled=self.progress,
         ):
 
             species_density = np.asarray(species_density, dtype=np.float64)

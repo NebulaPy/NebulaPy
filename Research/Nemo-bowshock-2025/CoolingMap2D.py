@@ -47,7 +47,7 @@ batched_silos = nebula.Silo.batch(
 )
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 
 # Calculates and stores geometric grid parameters.
 # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -61,7 +61,7 @@ mesh_edges_max = pion.geometry_container['edges_max']
 # This uses the first time instant's silo file to initialize
 pion.load_chemistry()
 
-cooling = nebula.cooling(pion_ion=ion, verbose=True)
+cooling = nebula.cooling(pion_ion=ion)
 
 ion_name = ion.replace('+', 'p')
 ion_output_dir = os.path.join(output_dir, ion_name)
@@ -69,7 +69,7 @@ os.makedirs(ion_output_dir, exist_ok=True)
 
 # calculating normalization factor
 mass_density_ism = 1.0E-24
-mass_H = const.mass['H']
+mass_H = const.ATOMIC_MASS['H']
 norm = (mass_H/mass_density_ism) ** 2.0
 
 runtime = 0.0

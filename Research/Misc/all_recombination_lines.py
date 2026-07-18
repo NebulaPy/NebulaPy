@@ -7,7 +7,7 @@ dummy_ne = [1e+3]
 
 output_path = '/Users/tony/Desktop/Multi-Ion-Bowshock/multi-ion-bowshock/NebulaPy/lines-transitions'
 
-nebula_pyneb = nebula.pyneb(pion_ion='H', temperature=dummy_temperature, ne=dummy_ne, verbose=True)
+nebula_pyneb = nebula.pyneb(pion_ion='H', temperature=dummy_temperature, ne=dummy_ne)
 
 spectroscopic_name = nebula_pyneb.Spectroscopic
 

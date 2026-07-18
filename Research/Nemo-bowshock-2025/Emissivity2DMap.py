@@ -58,7 +58,7 @@ batched_silos = nebula.Silo.batch(
 N_time_instant = len(batched_silos)
 
 # --- Load Simulation Data ---
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 pion.load_chemistry()  # Load ion and reaction network data
 pion.load_geometry(scale='cm')  # Load spatial grid configuration
 
@@ -87,7 +87,7 @@ os.makedirs(ion_output_dir, exist_ok=True)
 data_title = f"Bow-Shock emissivity map for the ion {pion_ion}"
 
 # --- Initialize Line Emission Calculator ---
-line_emission = nebula.line_emission(pion_ion, verbose=True)
+line_emission = nebula.line_emission(pion_ion)
 
 # --- Loop Through Time Steps ---
 runtime = 0.0

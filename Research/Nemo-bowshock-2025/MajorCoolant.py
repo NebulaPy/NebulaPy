@@ -39,7 +39,7 @@ cooling_rates = {}
 
 # Loop through all ions and compute cooling rates
 for ion in ion_list:
-    cooling = nebula.cooling(pion_ion=ion, verbose=False)
+    cooling = nebula.cooling(pion_ion=ion)
     ion_cooling_rate = cooling.generate_cooling_rate_map(temperature=temperature, ne=ne)
     # store as scalar assuming single T, ne
     cooling_rates[ion] = ion_cooling_rate[0]

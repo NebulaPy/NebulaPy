@@ -6,6 +6,7 @@ import os
 from NebulaPy.src.EmissionMeasure import emissionMeasure
 import multiprocessing as mp
 import queue
+import traceback
 import numpy as np
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
 from NebulaPy.src.NebulaProgress import NebulaProgress, track
@@ -23,6 +24,8 @@ def compute_row_spectrum(workerQ, doneQ, spectrum_obj, timeout):
     """Worker function to compute spectra for each grid row."""
 
     while True:
+        level = None
+        row = None
         try:
             task = workerQ.get(timeout=timeout)
 
@@ -30,14 +33,6 @@ def compute_row_spectrum(workerQ, doneQ, spectrum_obj, timeout):
                 break
 
             level, row, row_temperature, row_ne, row_grid_mask = task
-
-            '''
-            row_species_spectra_coefficients = spectrum_obj.computeSpeciesSpectraCoeff(
-                row_temperature=row_temperature,
-                row_ne=row_ne,
-                row_grid_mask=row_grid_mask,
-            )
-            '''
 
             row_species_nonFBCoeff, row_species_FBCoeff = (
                 spectrum_obj.computeSpeciesSpectraCoeff(
@@ -47,17 +42,29 @@ def compute_row_spectrum(workerQ, doneQ, spectrum_obj, timeout):
                 )
             )
 
-            '''
-            doneQ.put((level, row, row_species_spectra_coefficients))
-            '''
-
-            doneQ.put((level, row, row_species_nonFBCoeff, row_species_FBCoeff))
+            doneQ.put(
+                (
+                    "RESULT",
+                    level,
+                    row,
+                    row_species_nonFBCoeff,
+                    row_species_FBCoeff,
+                )
+            )
 
         except queue.Empty:
             break
 
-        except Exception as e:
-            doneQ.put(("ERROR", None, f"multiprocessing worker failed: {e}"))
+        except Exception as error:
+            doneQ.put(
+                (
+                    "ERROR",
+                    level,
+                    row,
+                    f"multiprocessing worker failed: {error}",
+                    traceback.format_exc(),
+                )
+            )
             break
 
 
@@ -84,7 +91,6 @@ class spectrum:
             userGrid=False,
             MPNcores=4,
             gridSize=1000,
-            verbose=True,
             progress=True,
     ):
 
@@ -97,7 +103,6 @@ class spectrum:
         self.filtername = filtername
         self.filterfactor = filterfactor
         self.allLines = allLines
-        self.verbose = verbose
         self.progress = progress
 
 
@@ -108,8 +113,8 @@ class spectrum:
             self.min_wvl, self.max_wvl = min_wavelength, max_wavelength
 
         elif min_photon_energy is not None and max_photon_energy is not None:
-            self.min_wvl = const.kev2Ang / max_photon_energy
-            self.max_wvl = const.kev2Ang / min_photon_energy
+            self.min_wvl = const.KEV_ANGSTROM / max_photon_energy
+            self.max_wvl = const.KEV_ANGSTROM / min_photon_energy
 
         else:
             raise NebulaError(
@@ -160,7 +165,7 @@ class spectrum:
         self.CIE = CIE
         self.NEQ = not CIE
         if CIE:
-            cie = cieMode(verbose=True)
+            cie = cieMode(progress=True)
             cie.load_cie()
         '''
 
@@ -181,7 +186,6 @@ class spectrum:
             pion_elements=elements,
             temperature=[1.0e7],  # dummy temperature
             ne=[1.0e9],  # dummy density
-            verbose=self.verbose
         )
         # Return chianti ion attributes for the species
         self.chianti_species_attributes = chianti_spec.species_attributes_container
@@ -193,11 +197,10 @@ class spectrum:
     ######################################################################################
     def setup_wavelength_grid(self, min_wvl, max_wvl, user_grid=False, grid_size=None):
 
-        if self.verbose:
-            if not user_grid:
-                logger.info("Setting up the default CHIANTI wavelength grid")
-            else:
-                logger.info("Setting up a uniform wavelength grid")
+        if not user_grid:
+            logger.debug("Setting up the default CHIANTI wavelength grid")
+        else:
+            logger.debug("Setting up a uniform wavelength grid")
 
         if min_wvl >= max_wvl:
             raise NebulaError(
@@ -229,7 +232,6 @@ class spectrum:
                 chianti_ion=species,
                 temperature=dummy_temperature,
                 ne=dummy_ne,
-                verbose=self.verbose
             )
 
             try:
@@ -361,7 +363,6 @@ class spectrum:
                 chianti_ion=species,
                 temperature=dummy_temperature,
                 ne=dummy_ne,
-                verbose=False
             )
 
             try:
@@ -404,7 +405,7 @@ class spectrum:
                         lower_states,
                         upper_states
                 ):
-                    energy_keV = 12.398419843320026 / wvl
+                    energy_keV = const.KEV_ANGSTROM / wvl
                     spectral_line = f"{spectroscopic_name} {wvl:.6f}"
 
                     line_catalog.append(
@@ -491,7 +492,6 @@ class spectrum:
                 chianti_ion=species,
                 temperature=row_temperature,
                 ne=row_ne,
-                verbose=self.verbose
             )
 
             # Bremsstrahlung/free-free emission
@@ -623,7 +623,12 @@ class spectrum:
         ##########################################################################
         # DEM calculation
         # initialize emission measure class
-        EM = emissionMeasure(Tmin=100, Tmax=1.0e9, Nbins=300, verbose=self.progress)
+        EM = emissionMeasure(
+            Tmin=100,
+            Tmax=1.0e9,
+            Nbins=300,
+            progress=self.progress,
+        )
         # generate DEM
         EM.DEM2D(temperature=temperature,
                  ne=ne, speciesDensities=species_densities,
@@ -700,8 +705,7 @@ class spectrum:
 
             completed = 0
 
-            if self.verbose:
-                logger.info("Computing spectrum")
+            logger.debug("Computing spectrum")
 
             with NebulaProgress(
                     "Computing species spectra",
@@ -712,20 +716,45 @@ class spectrum:
 
                 while completed < Ntasks:
 
-                    '''
-                    level, row, row_species_spectra_coefficents = doneQ.get()
-                    '''
-                    level, row, row_species_nonFBCoeff, row_species_FBCoeff = doneQ.get()
+                    (
+                        status,
+                        level,
+                        row,
+                        result_or_error,
+                        coefficients_or_traceback,
+                    ) = doneQ.get()
 
-
-                    if level == "ERROR":
+                    if status == "ERROR":
                         for p in processes:
-                            p.terminate()
+                            if p.is_alive():
+                                p.terminate()
+                        for p in processes:
+                            p.join()
 
-                        '''
-                        raise NebulaError(row_species_spectra_coefficents)
-                        '''
-                        raise NebulaError(row_species_nonFBCoeff)
+                        logger.error(
+                            "Spectrum worker failed at grid level %s, row %s: %s",
+                            level,
+                            row,
+                            result_or_error,
+                        )
+                        logger.debug(
+                            "Spectrum worker traceback:\n%s",
+                            coefficients_or_traceback,
+                        )
+                        raise NebulaError(result_or_error)
+
+                    if status != "RESULT":
+                        for p in processes:
+                            if p.is_alive():
+                                p.terminate()
+                        for p in processes:
+                            p.join()
+                        raise NebulaError(
+                            f"Unknown multiprocessing result status: {status!r}"
+                        )
+
+                    row_species_nonFBCoeff = result_or_error
+                    row_species_FBCoeff = coefficients_or_traceback
 
                     row_bins = EM.DEM_indices[level, row]
 

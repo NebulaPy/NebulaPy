@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 
 class DownloadDatabase:
 
-    def __init__(self, destination=None, verbose=False):
+    def __init__(self, destination=None, progress=False):
 
         if destination is None:
             destination = os.getcwd()  # set the current working directory as default location
@@ -33,17 +33,15 @@ class DownloadDatabase:
         try:
             if not os.path.exists(sed_database_dir):
                 os.makedirs(sed_database_dir)  # make both NebulaPy-DB and SED directories
-                if verbose:
-                    logger.info("Created database and SED directories")
+                logger.info("Created database and SED directories")
             else:
-                if verbose:
-                    logger.info("Database directory already exists")
+                logger.info("Database directory already exists")
         except Exception as e:
             logger.exception("Unable to prepare the SED database directory")
 
 
         self.sed_database_dir = sed_database_dir
-        self.verbose = verbose
+        self.progress = progress
         self.download_atlas_database()
         self.download_postdam_database()
         self.download_cmfgen_database()
@@ -52,18 +50,15 @@ class DownloadDatabase:
         try:
             if not os.path.exists(cool_database_dir):
                 os.makedirs(cool_database_dir)  # make both NebulaPy-DB and SED directories
-                if verbose:
-                    logger.info("Created cooling-table directory")
+                logger.info("Created cooling-table directory")
             else:
-                if verbose:
-                    logger.info("Cooling-table directory already exists")
+                logger.info("Cooling-table directory already exists")
         except Exception as e:
             logger.exception("Unable to prepare the cooling-table directory")
 
         self.cool_database_dir = cool_database_dir
         self.download_cooling_table()
-        if verbose:
-            logger.info("Database download completed")
+        logger.info("Database download completed")
 
 
     #########################################################################################
@@ -85,7 +80,7 @@ class DownloadDatabase:
                 completed=iteration,
                 total=total_files,
                 unit="files",
-                enabled=self.verbose,
+                enabled=self.progress,
             )
         else:
             logger.error("%s", error)
@@ -306,7 +301,7 @@ class DownloadDatabase:
     def download_database(destination=None):
         """This method allows the download process to be called directly from the command line."""
         # Create the class instance to run the download process
-        downloader = DownloadDatabase(destination, verbose=True)
+        DownloadDatabase(destination, progress=True)
 
     @staticmethod
     def run():
@@ -320,9 +315,8 @@ class DownloadDatabase:
             help="The destination path where the database will be downloaded"
         )
         args = parser.parse_args()
-        # Pass the destination and verbose flag to the download_database method
+        # Pass the selected destination to the download operation.
         DownloadDatabase.download_database(destination=args.destination)
-
 
 
 

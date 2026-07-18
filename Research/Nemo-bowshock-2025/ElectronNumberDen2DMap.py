@@ -52,7 +52,7 @@ batched_silos = nebula.Silo.batch(
 N_time_instant = len(batched_silos)
 
 # --- Load Simulation Data ---
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 pion.load_chemistry()  # Load ion and reaction network data
 pion.load_geometry(scale='pc')  # Load spatial grid configuration
 

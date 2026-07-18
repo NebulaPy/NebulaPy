@@ -50,7 +50,7 @@ else:
 
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 
 # load chemistry
 pion.load_chemistry()
@@ -69,7 +69,7 @@ cell_volume = pion.get_grid_volumes_2D()
 
 
 
-EM = nebula.emissionMeasure(Tmin=100, Tmax=1.e9, Nbins=200, verbose=True)
+EM = nebula.emissionMeasure(Tmin=100, Tmax=1.e9, Nbins=200, progress=True)
 
 runtime = 0.0
 # Loop over each time instant in the batched silo files

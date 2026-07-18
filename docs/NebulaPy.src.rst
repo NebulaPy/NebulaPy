@@ -12,14 +12,6 @@ NebulaPy.src.Chianti module
    :undoc-members:
    :show-inheritance:
 
-NebulaPy.src.ChiantiMultiProc module
-------------------------------------
-
-.. automodule:: NebulaPy.src.ChiantiMultiProc
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 NebulaPy.src.Downloader module
 ------------------------------
 

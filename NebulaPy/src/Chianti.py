@@ -44,12 +44,10 @@ class chianti:
     ######################################################################################
     def __init__(self, temperature, ne,
                  chianti_ion=None, pion_ion=None, pion_elements=None,
-                 continuum=False,
-                 verbose=False):
+                 continuum=False):
 
         self.temperature = temperature
         self.ne = ne
-        self.verbose = verbose
 
         # Count the number of arguments that are not None
         non_none_count = sum(arg is not None for arg in [chianti_ion, pion_ion, pion_elements])
@@ -62,13 +60,13 @@ class chianti:
             self.chianti_ion_name = self.get_chianti_symbol(pion_ion, make=False)
             self.chianti_ion = ch.ion(self.chianti_ion_name, temperature=self.temperature, eDensity=self.ne,
                                  pDensity='default', radTemperature=None, rStar=None, abundance=None,
-                                 setup=True, em=None, verbose=self.verbose)
+                                 setup=True, em=None, verbose=False)
             self.get_ion_attributes()
 
         if chianti_ion is not None:
             self.chianti_ion = ch.ion(chianti_ion, temperature=self.temperature, eDensity=self.ne,
                                  pDensity='default', radTemperature=None, rStar=None, abundance=None,
-                                 setup=True, em=None, verbose=self.verbose)
+                                 setup=True, em=None, verbose=False)
             self.chianti_ion_name = chianti_ion
 
         if pion_elements is not None:
@@ -185,13 +183,12 @@ class chianti:
             self.species_attributes_container[akey].pop('filename', None)
             self.species_attributes_container[akey].pop('experimental', None)
 
-        if self.verbose:
-            names = [
-                attributes["spectroscopic"]
-                for attributes in self.species_attributes_container.values()
-            ]
-            logger.info("Retrieved CHIANTI attributes for %s species", len(names))
-            logger.debug("CHIANTI species: %s", ", ".join(names))
+        names = [
+            attributes["spectroscopic"]
+            for attributes in self.species_attributes_container.values()
+        ]
+        logger.debug("Retrieved CHIANTI attributes for %s species", len(names))
+        logger.debug("CHIANTI species: %s", ", ".join(names))
 
         # Finalize the species attributes dictionary
         # At this point, `self.species_attributes` contains all the relevant
@@ -218,8 +215,7 @@ class chianti:
         self.species_attributes_container = {}
 
         # Loop through the sorted keys in the dictionary of species
-        if self.verbose:
-            logger.info("Retrieving CHIANTI ion attributes for %s", self.chianti_ion_name)
+        logger.debug("Retrieving CHIANTI ion attributes for %s", self.chianti_ion_name)
 
         for akey in sorted(species.Todo.keys()):
             self.species_attributes_container[akey] = chianti_util.convertName(akey)  # Convert the key and store it
@@ -236,8 +232,7 @@ class chianti:
                    Retrieve all spectral lines associated with a specified ion
                    :return: wave-length array
                    """
-        if self.verbose:
-            logger.info("Retrieving all spectral lines for %s", self.chianti_ion.Spectroscopic)
+        logger.debug("Retrieving all spectral lines for %s", self.chianti_ion.Spectroscopic)
         wvl = np.asarray(self.chianti_ion.Wgfa['wvl'], np.float64)
         wvl = np.abs(wvl)
         return wvl
@@ -250,8 +245,10 @@ class chianti:
         Retrieve all spectral lines associated with a specified ion
         :return: wave-length array
         """
-        if self.verbose:
-            logger.info("Retrieving spectral lines and transitions for %s", self.chianti_ion.Spectroscopic)
+        logger.debug(
+            "Retrieving spectral lines and transitions for %s",
+            self.chianti_ion.Spectroscopic,
+        )
 
         Ref = self.chianti_ion.Elvlc['ref']
         A_value = np.asarray(self.chianti_ion.Wgfa['avalue'], np.float64)
@@ -279,8 +276,10 @@ class chianti:
             return None
 
         else:
-            if self.verbose:
-                logger.info("Retrieving all line emissivities for %s", self.chianti_ion.Spectroscopic)
+            logger.debug(
+                "Retrieving all line emissivities for %s",
+                self.chianti_ion.Spectroscopic,
+            )
             self.chianti_ion.emiss(allLines=allLines)
             emissivity = self.chianti_ion.Emiss
             return emissivity
@@ -310,9 +309,7 @@ class chianti:
         all_lines = np.array(self.get_allLines())  # Get all available lines as a NumPy array.
         all_lines = all_lines[all_lines != 0]  # Remove any zero entries (which may indicate missing or invalid lines).
 
-        # Print a message if verbose mode is enabled.
-        if self.verbose:
-            logger.info("Retrieving indices for requested spectral lines")
+        logger.debug("Retrieving indices for requested spectral lines")
 
         # Check if every requested line exists in the available list of lines.
         missing_lines = [line for line in line_list if line not in all_lines]
@@ -410,16 +407,29 @@ class chianti:
             verbose=False
         )
 
-        if self.verbose:
-            logger.debug(
-                "Computing bremsstrahlung emission rate for %s",
-                self.chianti_ion.Spectroscopic,
+        logger.debug(
+            "Computing bremsstrahlung emission rate for %s",
+            self.chianti_ion.Spectroscopic,
+        )
+
+
+        prefactor_const = (
+            (const.SPEED_OF_LIGHT * const.CM_TO_ANGSTROM)
+            / 3.0
+            / const.ELECTRON_MASS
+            * (
+                const.FINE_STRUCTURE_CONSTANT
+                * const.PLANCK_CONSTANT
+                / const.PI
+            ) ** 3
+            * np.sqrt(
+                2.0
+                * const.PI
+                / 3.0
+                / const.ELECTRON_MASS
+                / const.BOLTZMANN_CONSTANT
             )
-
-
-        prefactor_const = ((const.light * 1e8) / 3. / const.emass
-                     * (const.fine * const.planck / np.pi) ** 3
-                     * np.sqrt(2. * const.pi / 3. / const.emass / const.kB))
+        )
 
         # shape -> (nT, 1)
         prefactor = (prefactor_const * Zion ** 2 / np.sqrt(temperature))[:, np.newaxis]
@@ -428,8 +438,10 @@ class chianti:
         # Exponential factor
         # shape -> (nT, nW)
         # -----------------------------
-        exponent = -const.planck * (1.0e8 * const.light) / (
-                const.boltzmann * np.outer(temperature, wavelength)
+        exponent = -const.PLANCK_CONSTANT * (
+                const.CM_TO_ANGSTROM * const.SPEED_OF_LIGHT
+        ) / (
+                const.BOLTZMANN_CONSTANT * np.outer(temperature, wavelength)
         )
         exp_factor = np.exp(exponent) / (wavelength[np.newaxis, :] ** 2)
 
@@ -455,11 +467,10 @@ class chianti:
         # Final safety check
         bremsstrahlung_coefficients = np.asarray(bremsstrahlung_coefficients, dtype=np.float64).squeeze()
 
-        if self.verbose:
-            logger.debug(
-                "Bremsstrahlung emission computed for %s",
-                self.chianti_ion.Spectroscopic,
-            )
+        logger.debug(
+            "Bremsstrahlung emission computed for %s",
+            self.chianti_ion.Spectroscopic,
+        )
 
         return bremsstrahlung_coefficients
 
@@ -471,11 +482,10 @@ class chianti:
         Calculates the free-bound (radiative recombination) continuum emissivity of an ion.
         """
 
-        if self.verbose:
-            logger.debug(
-                "Computing free-bound emission rate for %s",
-                self.chianti_ion.Spectroscopic,
-            )
+        logger.debug(
+            "Computing free-bound emission rate for %s",
+            self.chianti_ion.Spectroscopic,
+        )
 
         # Create a continuum object
         continuum_fb = continuum(
@@ -483,7 +493,7 @@ class chianti:
             temperature=self.temperature,
             abundance=None,
             em=None,
-            verbose=self.verbose
+            verbose=False,
         )
         N_temp = len(self.temperature)
         N_wvl = len(wavelength)
@@ -498,11 +508,10 @@ class chianti:
             freebound_coefficients = np.zeros((N_temp, N_wvl), dtype=np.float64)
         # Clean up the continuum object to free memory
         del continuum_fb
-        if self.verbose:
-            logger.debug(
-                "Free-bound emission computed for %s",
-                self.chianti_ion.Spectroscopic,
-            )
+        logger.debug(
+            "Free-bound emission computed for %s",
+            self.chianti_ion.Spectroscopic,
+        )
 
         return freebound_coefficients
 
@@ -512,11 +521,10 @@ class chianti:
     ######################################################################################
     def get_line_coefficients(self, wavelength, allLines=True, filtername=None, filterfactor=None):
 
-        if self.verbose:
-            logger.debug(
-                "Retrieving all spectral-line emissivities for %s",
-                self.chianti_ion.Spectroscopic,
-            )
+        logger.debug(
+            "Retrieving all spectral-line emissivities for %s",
+            self.chianti_ion.Spectroscopic,
+        )
 
         wavelength = np.asarray(wavelength, dtype=np.float64)
 
@@ -541,13 +549,12 @@ class chianti:
         line_emission_coefficients = np.zeros((N_temp, N_wvl), dtype=np.float64)
 
         if len(selected_idx) == 0:
-            if self.verbose:
-                logger.info(
-                    "No %s lines found between %.2e and %.2e Å; skipping",
-                    self.chianti_ion.Spectroscopic,
-                    min_wvl,
-                    max_wvl,
-                )
+            logger.debug(
+                "No %s lines found between %.2e and %.2e Å; skipping",
+                self.chianti_ion.Spectroscopic,
+                min_wvl,
+                max_wvl,
+            )
             return line_emission_coefficients
 
         selected_lines = lines[selected_idx]
@@ -565,11 +572,10 @@ class chianti:
                         line_profile * selected_emissivity[line_idx, temp_idx]
                 )
 
-        if self.verbose:
-            logger.debug(
-                "Spectral-line calculation completed for %s",
-                self.chianti_ion.Spectroscopic,
-            )
+        logger.debug(
+            "Spectral-line calculation completed for %s",
+            self.chianti_ion.Spectroscopic,
+        )
 
         return line_emission_coefficients
 
@@ -585,10 +591,6 @@ class chianti:
         :return:
         '''
 
-        #  upper level of two photon transitions for helium-like ions
-        heseqLvl2 = [-1, 3, -1, -1, -1, 3, 6, 6, -1, 6, 6, 6, 6, 6, 3,
-                     5, 3, 5, 3, 5, -1, 5, -1, 5, -1, 5, -1, 5, -1, 5]
-
         N_temp = len(self.temperature)
         N_wvl = len(wavelength)
 
@@ -598,34 +600,39 @@ class chianti:
         if self.chianti_ion.Z == self.chianti_ion.Ion:
             l1 = 1 - 1
             l2 = 2 - 1
-            wvl0 = 1.e+8 / (self.chianti_ion.Elvlc['ecm'][l2] - self.chianti_ion.Elvlc['ecm'][l1])
+            wvl0 = const.CM_TO_ANGSTROM / (
+                self.chianti_ion.Elvlc['ecm'][l2]
+                - self.chianti_ion.Elvlc['ecm'][l1]
+            )
             has_valid_wavelength = np.any(wavelength > wvl0)
         # for Helium sequence
         else:
             l1 = 1 - 1
-            l2 = heseqLvl2[self.chianti_ion.Z - 1] - 1
-            wvl0 = 1.e+8 / (self.chianti_ion.Elvlc['ecm'][l2] - self.chianti_ion.Elvlc['ecm'][l1])
+            l2 = const.HE_LIKE_TWO_PHOTON_UPPER_LEVELS[self.chianti_ion.Z - 1] - 1
+            wvl0 = const.CM_TO_ANGSTROM / (
+                self.chianti_ion.Elvlc['ecm'][l2]
+                - self.chianti_ion.Elvlc['ecm'][l1]
+            )
             has_valid_wavelength = np.any(wavelength > wvl0)
 
         if has_valid_wavelength:
-            if self.verbose:
-                logger.debug(
-                    "Computing two-photon emission rate for %s",
-                    self.chianti_ion.Spectroscopic,
-                )
+            logger.debug(
+                "Computing two-photon emission rate for %s",
+                self.chianti_ion.Spectroscopic,
+            )
             self.chianti_ion.twoPhotonEmiss(wavelength)
             twophoton_coefficients = self.chianti_ion.TwoPhotonEmiss['emiss']
 
-            if self.verbose:
-                logger.debug(
-                    "Two-photon emission computed for %s",
-                    self.chianti_ion.Spectroscopic,
-                )
+            logger.debug(
+                "Two-photon emission computed for %s",
+                self.chianti_ion.Spectroscopic,
+            )
 
         if not has_valid_wavelength:
-            if self.verbose:
-                logger.info(
-                    f"Skipping two-photon emission for {self.chianti_ion.Spectroscopic}: "
-                    f"no wavelengths > {wvl0:.3f} Å.")
+            logger.debug(
+                "Skipping two-photon emission for %s: no wavelengths > %.3f Å",
+                self.chianti_ion.Spectroscopic,
+                wvl0,
+            )
 
         return twophoton_coefficients

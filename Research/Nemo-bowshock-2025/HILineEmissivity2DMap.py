@@ -99,7 +99,7 @@ batched_silos = nebula.Silo.batch(
 N_time_instant = len(batched_silos)
 
 # Initialize the PION class to handle simulation data
-pion = nebula.pion(batched_silos, verbose=True)
+pion = nebula.pion(batched_silos, progress=True)
 
 # Calculates and stores geometric grid parameters.
 # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -132,7 +132,7 @@ os.makedirs(ion_output_dir, exist_ok=True)
 data_title = f"Relevant H lines emissivity map"
 
 # Initialize Line Emission Module
-line_emission = nebula.line_emission(pion_ion, verbose=True)
+line_emission = nebula.line_emission(pion_ion)
 
 # Loop Through Silo Time Instants
 runtime = 0.0

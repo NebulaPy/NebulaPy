@@ -17,12 +17,11 @@ class line_emission():
     ######################################################################################
     # initializing the class emissionline
     ######################################################################################
-    def __init__(self, ion, verbose=True):
+    def __init__(self, ion):
         """
         only single ion is considered here
         """
         self.ion = ion
-        self.verbose = verbose
         self.line_emission_container = {}
         self.line_emission_container['ion'] = self.ion
 
@@ -34,7 +33,7 @@ class line_emission():
         # Retrieve the list of possible emission lines for the species
         dummy_temperature_array = [1000]
         dummy_ne_array = [1.0]
-        ion = chianti(pion_ion=self.ion, temperature=dummy_temperature_array, ne=dummy_ne_array, verbose=False)
+        ion = chianti(pion_ion=self.ion, temperature=dummy_temperature_array, ne=dummy_ne_array)
         spectroscopic_name = ion.chianti_ion.Spectroscopic
         all_lines = ion.get_line_emissivity(allLines=True)['wvl']
         del ion
@@ -73,15 +72,10 @@ class line_emission():
 
         '''
 
-        ion = chianti(pion_ion=self.ion, temperature=temperature, ne=ne, verbose=self.verbose)
+        ion = chianti(pion_ion=self.ion, temperature=temperature, ne=ne)
         self.line_emission_container['temperature'] = temperature
         self.line_emission_container['ne'] = ne
         self.line_emission_container['spectroscopic'] = ion.chianti_ion.Spectroscopic
-
-        # if the line (wavelength) is given in string, get the corresponding
-        # float value
-        #if isinstance(line, str):
-        #    line = const.wvl_dict[line]
 
         all_emissivity_data = ion.get_line_emissivity()
         allLines = all_emissivity_data['wvl']
@@ -90,29 +84,37 @@ class line_emission():
 
         indices = []
         for line in lines:
-            if self.verbose:
-                logger.info("Identifying %.6g Å in %s line data", line, ion.chianti_ion.Spectroscopic)
+            logger.debug(
+                "Identifying %.6g Å in %s line data",
+                line,
+                ion.chianti_ion.Spectroscopic,
+            )
             index = (np.abs(allLines - line)).argmin()
             tolerance = 10 ** -4
             if np.abs(allLines[index] - line) <= tolerance:
-                if self.verbose:
-                    logger.debug("Line %.6g Å found at index %s", line, index)
+                logger.debug("Line %.6g Å found at index %s", line, index)
                 indices.append(index)
             else:
                 raise NebulaError('line not found in allLines')
 
         self.line_emission_container['line_indices'] = indices
 
-        if self.verbose:
-            logger.info("Retrieving %s emissivities for lines %s", ion.chianti_ion.Spectroscopic, lines)
+        logger.debug(
+            "Retrieving %s emissivities for lines %s",
+            ion.chianti_ion.Spectroscopic,
+            lines,
+        )
 
         emissivity = np.asarray(all_emissivity_data['emiss'][indices])
         self.line_emission_container['emiss'] = emissivity
 
         # Calculating line Luminosity
-        if self.verbose:
-            logger.info("Calculating %s luminosities for lines %s", ion.chianti_ion.Spectroscopic, lines)
-        luminosity = [4.0 * const.pi * np.sum(e * species_density * shell_volume) for e in emissivity]
+        logger.info(
+            "Calculating %s luminosities for lines %s",
+            ion.chianti_ion.Spectroscopic,
+            lines,
+        )
+        luminosity = [4.0 * const.PI * np.sum(e * species_density * shell_volume) for e in emissivity]
         self.line_emission_container['luminosity'] = luminosity
 
     ######################################################################################
@@ -133,7 +135,7 @@ class line_emission():
         #   corresponding to each line.
 
         # Define a minimum value for electron density to prevent division by zero
-        electron_tolerance = 1.E-08
+        electron_tolerance = const.ELECTRON_DENSITY_FLOOR
 
         # Get the number of grid levels from the temperature data
         NGlevel = len(temperature)
@@ -167,7 +169,7 @@ class line_emission():
                 temperature_row = temperature[level][row]
                 ne_row = ne[level][row]
                 # Create a CHIANTI ion object to calculate emissivities
-                ion = chianti(pion_ion=self.ion, temperature=temperature_row, ne=ne_row, verbose=False)
+                ion = chianti(pion_ion=self.ion, temperature=temperature_row, ne=ne_row)
                 # Get emissivities for the specified lines as a dictionary {line: values}
                 lines_emissivity_row = ion.get_line_emissivity_for_list(line_list=lines)
                 del ion  # Free the ion object memory
@@ -234,13 +236,13 @@ class line_emission():
 
         Notes
         -----
-        - A small electron density tolerance (`electron_tolerance = 1.E-08`) is set to avoid division by zero.
+        - A small shared electron-density floor is used to avoid division by zero.
         - The method loops over each grid level and computes line luminosities.
         - The most luminous lines are selected using `np.argsort()`.
         """
 
         # Define a tolerance for electron density (to avoid division by zero)
-        electron_tolerance = 1.E-08
+        electron_tolerance = const.ELECTRON_DENSITY_FLOOR
 
         # Get the number of grid levels in the temperature dataset
         NGlevel = len(temperature)
@@ -251,7 +253,7 @@ class line_emission():
         # Retrieve the list of possible emission lines for the species
         dummy_temperature_array = [1000]
         dummy_ne_array = [1.0]
-        species = chianti(pion_ion=self.ion, temperature=dummy_temperature_array, ne=dummy_ne_array, verbose=False)
+        species = chianti(pion_ion=self.ion, temperature=dummy_temperature_array, ne=dummy_ne_array)
         spectroscopic_name = species.chianti_ion.Spectroscopic
         keys = species.species_attributes_container[species.chianti_ion_name]['keys']
 
@@ -292,7 +294,7 @@ class line_emission():
                 prefix_msg = f'Chianti: computing the luminosity of {spectroscopic_name} lines at grid-level {level}'
 
                 # Compute emissivity for the species at the given conditions
-                species = chianti(pion_ion=self.ion, temperature=temperature_row, ne=ne_row, verbose=False)
+                species = chianti(pion_ion=self.ion, temperature=temperature_row, ne=ne_row)
                 all_lines_emissivity_info_row = species.get_line_emissivity(allLines=False)
                 del species
 
@@ -305,7 +307,7 @@ class line_emission():
                 # Compute total luminosity for each emission line
                 for index in range(len(all_lines)):
                     species_all_lines_luminosity_level[index] += (
-                            4.0 * const.pi * np.sum(all_lines_emissivity_row[index]
+                            4.0 * const.PI * np.sum(all_lines_emissivity_row[index]
                                                     * species_density_row
                                                     * cell_volume_row
                                                     * grid_mask_row)
@@ -388,7 +390,7 @@ class line_emission():
         """
 
         # Define a small tolerance value to prevent division errors when electron density is zero
-        electron_tolerance = 1.E-08
+        electron_tolerance = const.ELECTRON_DENSITY_FLOOR
 
         # Get the number of grid levels (assumed to be the first dimension of the temperature array)
         NGlevel = len(temperature)
@@ -421,7 +423,7 @@ class line_emission():
                     prefix_msg = f'computing the luminosity of {self.ion} lines at grid-level {level}'
 
                 # Compute the line emissivity for the species using Chianti
-                species = chianti(pion_ion=self.ion, temperature=temperature_row, ne=ne_row, verbose=False)
+                species = chianti(pion_ion=self.ion, temperature=temperature_row, ne=ne_row)
                 lines_emissivity_row = species.get_line_emissivity_for_list(
                     lines)  # Retrieve emissivities for specified lines
                 line_keys = lines_emissivity_row.keys()  # Get the emission line identifiers
@@ -430,7 +432,7 @@ class line_emission():
                 # Compute the total luminosity for each emission line in this row
                 for index, line in enumerate(line_keys):
                     lines_luminosity_level[index] += (
-                            4.0 * const.pi * np.sum(
+                            4.0 * const.PI * np.sum(
                         lines_emissivity_row[line] * species_density_row * cell_volume_row * grid_mask_row
                     )
                     )
@@ -459,7 +461,7 @@ class line_emission():
     def recombination_line_emissivity_2D_map(self, lines, temperature, ne, progress_bar=True):
 
         # Define a minimum value for electron density to prevent division by zero
-        electron_tolerance = 1.E-08
+        electron_tolerance = const.ELECTRON_DENSITY_FLOOR
 
         # Get the number of grid levels from the temperature data
         NGlevel = len(temperature)
@@ -494,7 +496,7 @@ class line_emission():
                 ne_row = ne[level][row]
 
                 # Create a PyNeb atom object to calculate recombination emissivities
-                ion = pyneb(pion_ion=self.ion, temperature=temperature_row, ne=ne_row, verbose=False)
+                ion = pyneb(pion_ion=self.ion, temperature=temperature_row, ne=ne_row)
                 # Get emissivities for the specified lines as a dictionary {line: values}
                 lines_emissivity_row = ion.get_recomb_line_emissivity_for_list(line_list=lines)
                 del ion  # Free the ion object memory
@@ -544,7 +546,7 @@ class line_emission():
         """
 
         # Define a small tolerance value to prevent division errors when electron density is zero
-        electron_tolerance = 1.E-08
+        electron_tolerance = const.ELECTRON_DENSITY_FLOOR
 
         # Get the number of grid levels (assumed to be the first dimension of the temperature array)
         NGlevel = len(temperature)
@@ -577,7 +579,7 @@ class line_emission():
                     prefix_msg = f'computing the luminosity of {self.ion} lines at grid-level {level}'
 
                 # Compute the line emissivity for the species using Pyneb
-                species = pyneb(pion_ion=self.ion, temperature=temperature_row, ne=ne_row, verbose=False)
+                species = pyneb(pion_ion=self.ion, temperature=temperature_row, ne=ne_row)
                 lines_emissivity_row = species.get_recomb_line_emissivity_for_list(lines)  # Retrieve emissivities for specified lines
                 line_keys = lines_emissivity_row.keys()  # Get the emission line identifiers
                 del species  # Free memory
@@ -585,7 +587,7 @@ class line_emission():
                 # Compute the total luminosity for each emission line in this row
                 for index, line in enumerate(line_keys):
                     lines_luminosity_level[index] += (
-                            4.0 * const.pi * np.sum(
+                            4.0 * const.PI * np.sum(
                         lines_emissivity_row[line] * species_density_row * cell_volume_row * grid_mask_row
                     )
                     )
