@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import NebulaPy.version as version
 from NebulaPy.src import Constants as const
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
-from NebulaPy.src.NebulaProgress import update_progress
+from NebulaPy.src.Progress import update_progress
 
 logger = get_logger(__name__)
 # TODO: Include tolerance for mdot value in potsdam model

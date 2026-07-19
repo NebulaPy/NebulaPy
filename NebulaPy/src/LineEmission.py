@@ -8,7 +8,7 @@ from typing import Optional
 from NebulaPy.src.Utils import get_spectroscopic_symbol
 from NebulaPy.src import Constants as const
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
-from NebulaPy.src.NebulaProgress import update_progress
+from NebulaPy.src.Progress import update_progress
 
 logger = get_logger(__name__)
 

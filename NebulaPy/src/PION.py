@@ -6,7 +6,7 @@ from NebulaPy.src.Utils import get_element_symbol
 from NebulaPy.src import Constants as const
 import astropy.units as unit
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
-from NebulaPy.src.NebulaProgress import track
+from NebulaPy.src.Progress import track
 
 logger = get_logger(__name__)
 

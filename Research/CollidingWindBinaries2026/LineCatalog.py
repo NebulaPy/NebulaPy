@@ -108,5 +108,4 @@ NebulaSpectrum = nebula.spectrum(
 )
 
 wavelength = NebulaSpectrum.WavelengthGrid
-NebulaSpectrum.LineCataloger(Filebase=Filebase, OutDir=OutputDir)
-
+NebulaSpectrum.line_cataloger(Filebase=Filebase, OutDir=OutputDir)

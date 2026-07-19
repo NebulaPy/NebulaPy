@@ -63,7 +63,7 @@ SimulationName = "Bowshock_FF"
 def main():
     """Generate spectra without re-running this workflow in spawned workers."""
 
-    configure_logging(level="INFO", log_to_file=True, log_file=f"{Filebase}.log")
+    configure_logging(level="DEBUG", log_to_file=True, log_file=f"{Filebase}.log")
     logger = get_logger()
     logger.info(f"{Filebase} X-ray Spectrum")
 
@@ -113,14 +113,13 @@ def main():
         doBremsstrahlung=True,
         doFreebound=True,
         doLine=True,
-        doTwophoton=False,
-        CIE=False,
+        doTwophoton=True,
         filtername=None,
         filterfactor=None,
         userGrid=True,
         gridSize=3000,
         allLines=True,
-        MPNcores=4,
+        MPNcores=8,
         progress=True,
     )
 
@@ -148,7 +147,7 @@ def main():
         ne = pion.get_ne(silo_instant)
         species_densities = pion.get_species_number_densities(silo_instant)
 
-        NebulaSpectrum.generateSpectrum(
+        NebulaSpectrum.generate_spectrum(
             temperature=temperature,
             ne=ne,
             species_densities=species_densities,

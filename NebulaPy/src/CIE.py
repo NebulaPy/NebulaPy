@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 from NebulaPy.src.Utils import getPionSymbol
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
-from NebulaPy.src.NebulaProgress import track
+from NebulaPy.src.Progress import track
 
 logger = get_logger(__name__)
 

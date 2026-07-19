@@ -12,7 +12,7 @@ import importlib.resources as pkg_resources
 import NebulaPy.data as compressed_data
 import NebulaPy.version as version
 from NebulaPy.src.LoggingConfig import configure_logging, get_logger
-from NebulaPy.src.NebulaProgress import update_progress
+from NebulaPy.src.Progress import update_progress
 warnings.filterwarnings("ignore")
 
 logger = get_logger(__name__)
@@ -317,6 +317,5 @@ class DownloadDatabase:
         args = parser.parse_args()
         # Pass the selected destination to the download operation.
         DownloadDatabase.download_database(destination=args.destination)
-
 
 

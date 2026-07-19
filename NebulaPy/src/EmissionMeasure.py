@@ -1,7 +1,7 @@
 import numpy as np
 from astropy import units as u
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
-from NebulaPy.src.NebulaProgress import track
+from NebulaPy.src.Progress import track
 
 logger = get_logger(__name__)
 
