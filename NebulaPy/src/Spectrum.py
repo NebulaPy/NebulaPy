@@ -880,4 +880,6 @@ class spectrum:
                 dtype=np.float64,
             )
 
-        self.Spectrum = integrated_spectrum
+        # Coefficients are accumulated per steradian. Integrate isotropic
+        # emission over solid angle to return luminosity per wavelength.
+        self.Spectrum = 4.0 * const.PI * integrated_spectrum

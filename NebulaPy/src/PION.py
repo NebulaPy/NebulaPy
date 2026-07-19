@@ -887,7 +887,20 @@ class pion():
                 massfrac_sum += atomic_number * np.maximum(top_ion, 0.0)
                 ne += massfrac_sum / const.ATOMIC_MASS[element_name]
 
-            return ne * density
+            ne *= density
+            below_floor = ne < const.ELECTRON_DENSITY_FLOOR
+            corrected_cells = np.count_nonzero(below_floor)
+
+            if corrected_cells:
+                logger.warning(
+                    "Electron density is below %.3e cm^-3 in %s cells; "
+                    "applying the numerical floor",
+                    const.ELECTRON_DENSITY_FLOOR,
+                    corrected_cells,
+                )
+                ne[below_floor] = const.ELECTRON_DENSITY_FLOOR
+
+            return ne
 
         # 2D cylindrical grid
         if self.geometry_container['coordinate_sys'] == 'cylindrical':
@@ -940,6 +953,25 @@ class pion():
                     ne[level] += massfrac_sum / const.ATOMIC_MASS[element_name]
 
             ne = [density[level] * ne[level] for level in range(Nlevel)]
+            below_floor = [
+                level_ne < const.ELECTRON_DENSITY_FLOOR
+                for level_ne in ne
+            ]
+            corrected_cells = sum(
+                np.count_nonzero(level_mask)
+                for level_mask in below_floor
+            )
+
+            if corrected_cells:
+                logger.warning(
+                    "Electron density is below %.3e cm^-3 in %s cells; "
+                    "applying the numerical floor",
+                    const.ELECTRON_DENSITY_FLOOR,
+                    corrected_cells,
+                )
+
+                for level, level_mask in enumerate(below_floor):
+                    ne[level][level_mask] = const.ELECTRON_DENSITY_FLOOR
 
             return ne
 

@@ -119,7 +119,7 @@ def main():
         userGrid=True,
         gridSize=3000,
         allLines=True,
-        MPNcores=8,
+        MPNcores=4,
         progress=True,
     )
 

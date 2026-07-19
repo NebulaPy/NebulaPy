@@ -100,23 +100,23 @@ class emissionMeasure():
                     f" DEM-2D input arrays have inconsistent shapes for species {species}."
                 )
 
-            species_DEM = np.zeros(self.Nbins, dtype=np.float64)
+            # Accumulate all temperature bins in one pass. The previous loop
+            # constructed three full-grid masks for every bin and species.
+            valid_cells = (
+                (self.DEM_indices >= 0)
+                & (self.DEM_indices < self.Nbins)
+                & (species_density > 0.0)
+            )
 
-            for bin_idx in range(self.Nbins):
-                # Cells belonging to this temperature bin
-                bin_mask = self.DEM_indices == bin_idx
+            weights = ne * gridMask
+            weights *= species_density
+            weights *= volume
 
-                # Only include cells where species exists
-                species_mask = species_density > 0.0
-
-                mask = bin_mask & species_mask
-
-                species_DEM[bin_idx] = np.sum(
-                    ne[mask]
-                    * gridMask[mask]
-                    * species_density[mask]
-                    * volume[mask]
-                )
+            species_DEM = np.bincount(
+                self.DEM_indices[valid_cells].ravel(),
+                weights=weights[valid_cells].ravel(),
+                minlength=self.Nbins,
+            ).astype(np.float64, copy=False)
 
             DEM[species] = species_DEM
 

@@ -1,18 +1,8 @@
 import NebulaPy.src as nebula
-from NebulaPy.tools import util
 import time
-# from pypion.ReadData import ReadData
 import matplotlib.pyplot as plt
 import numpy as np
-# import astropy.units as unit
 import os
-# from NebulaPy.tools import constants as const
-# import pandas as pd
-import ChiantiPy.tools.filters as chfilters
-import matplotlib.pyplot as plt  # Plotting
-from mpl_toolkits.axes_grid1 import make_axes_locatable  # For attaching colorbars to axes
-from matplotlib.ticker import MultipleLocator, ScalarFormatter  # For controlling tick formatting
-from scipy.ndimage import gaussian_filter1d
 
 # constants
 cm2au = 6.68459e-14  # cm to au conversion factor
@@ -20,6 +10,8 @@ cm2au = 6.68459e-14  # cm to au conversion factor
 # Macbook
 #OutputDir = '/Users/tony/Desktop/CWBs-NEMOv1/Post-Processing/XraySpectrum'  # Output image directory
 
+'''
+# Colliding wind binaries
 #Razer Blade -> Set up paths and filenames
 OutputDir = '/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum'  # Output image directory
 SiloDir = '/home/tony/Desktop/CWBs-2026/Silo-n128'  # Directory containing silo files
@@ -28,6 +20,19 @@ start_time = 1.24e6  # in sec
 finish_time = None
 time_unit = 'sec'
 out_frequency = None
+SimulationName = "CWB"
+'''
+
+# Colliding wind binaries
+#Macbook -> Set up paths and filenames
+OutputDir = '/Users/tony/Desktop/CWBs-NEMOv1/Post-Processing/WR140'  # Output image directory
+SiloDir = '/Users/tony/Desktop/CWBs-NEMOv1/Silo-n128'  # Directory containing silo files
+Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
+start_time = 14.35  # days
+finish_time = None
+time_unit = 'days'
+out_frequency = None
+SimulationName = "WR140"
 
 
 # Batch the silo files according to the time instant

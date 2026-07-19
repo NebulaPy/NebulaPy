@@ -621,7 +621,13 @@ class chianti:
                 self.chianti_ion.Spectroscopic,
             )
             self.chianti_ion.twoPhotonEmiss(wavelength)
-            twophoton_coefficients = self.chianti_ion.TwoPhotonEmiss['emiss']
+            # CHIANTI's line, free-free, and free-bound coefficients are per
+            # steradian. twoPhotonEmiss omits that solid-angle normalization,
+            # so apply it here before combining the emission processes.
+            twophoton_coefficients = (
+                self.chianti_ion.TwoPhotonEmiss['emiss']
+                / (4.0 * const.PI)
+            )
 
             logger.debug(
                 "Two-photon emission computed for %s",
