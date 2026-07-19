@@ -750,22 +750,11 @@ class spectrum:
                     row_species_nonfb_coefficients = nonFBCoeff_or_error
                     row_species_fb_coefficients = FBCoeff_or_traceback
 
-                    row_mask = grid_mask[level, row][:, None]
-
-                    row_species_nonfb_coefficients = {
-                        species: coefficients * row_mask
-                        for species, coefficients
-                        in row_species_nonfb_coefficients.items()
-                    }
-
-                    row_species_fb_coefficients = {
-                        species: coefficients * row_mask
-                        for species, coefficients
-                        in row_species_fb_coefficients.items()
-                    }
+                    row_ne = ne[level, row]
+                    row_volume = grid_volume[level, row]
+                    row_grid_mask = grid_mask[level, row]
 
                     row_bins = EM.DEM_indices[level, row]
-
                     occupied_bins = np.unique(
                         row_bins[(row_bins >= 0) & (row_bins < EM.Nbins)]
                     )
@@ -790,21 +779,55 @@ class spectrum:
                                 )
 
                                 if nonfb_coefficients is not None:
+                                    row_species_density = species_densities[
+                                        pion_species
+                                    ][level, row]
+
+                                    row_species_dem = (
+                                        row_ne
+                                        * row_species_density
+                                        * row_volume
+                                        * row_grid_mask
+                                    )
+
                                     species_nonfb_spectra[pion_species][bin_idx, :] += np.sum(
-                                        nonfb_coefficients[bin_mask, :],
+                                        nonfb_coefficients[bin_mask, :]
+                                        * row_species_dem[bin_mask, None],
                                         axis=0,
                                     )
 
                             if pion_species in species_fb_spectra:
-                                fb_coefficients = row_species_fb_coefficients.get(
+                                higher_chianti_ion = self.chianti_species_attributes[
                                     chianti_species
-                                )
+                                ].get("higher", 0)
 
-                                if fb_coefficients is not None:
-                                    species_fb_spectra[pion_species][bin_idx, :] += np.sum(
-                                        fb_coefficients[bin_mask, :],
-                                        axis=0,
+                                recombining_ion = recombining_species.get(pion_species)
+
+                                if (
+                                        higher_chianti_ion
+                                        and recombining_ion in species_densities
+                                ):
+                                    fb_coefficients = row_species_fb_coefficients.get(
+                                        higher_chianti_ion
                                     )
+
+                                    if fb_coefficients is not None:
+                                        row_recombining_species_density = species_densities[
+                                            recombining_ion
+                                        ][level, row]
+
+                                        row_recombining_species_dem = (
+                                            row_ne
+                                            * row_recombining_species_density
+                                            * row_volume
+                                            * row_grid_mask
+                                        )
+
+                                        species_fb_spectra[pion_species][bin_idx, :] += np.sum(
+                                            fb_coefficients[bin_mask, :]
+                                            * row_recombining_species_dem[bin_mask, None],
+                                            axis=0,
+                                        )
 
 
                     completed += 1
@@ -814,36 +837,33 @@ class spectrum:
                 p.join()
 
         ##########################################################################
-        # Multiply by DEM and sum over temperature bins
+        # Sum the DEM-weighted emission over temperature bins
         Spectrum = {}
 
-        spectrum_species = (
+        spectrum_species = sorted(
                 set(species_nonfb_spectra)
                 | set(species_fb_spectra)
         )
 
         for species in spectrum_species:
-            species_spectrum = np.zeros(self.N_wvl, dtype=np.float64)
+            species_spectrum = np.zeros(
+                self.N_wvl,
+                dtype=np.float64,
+            )
 
-            # Non-free-bound emission from ion q uses DEM[q].
             nonfb_spectra = species_nonfb_spectra.get(species)
 
-            if nonfb_spectra is not None and species in EM.DEM:
+            if nonfb_spectra is not None:
                 species_spectrum += np.sum(
-                    nonfb_spectra * EM.DEM[species][:, None],
+                    nonfb_spectra,
                     axis=0,
                 )
 
-            # Free-bound emission from ion q uses DEM[q+1].
             fb_spectra = species_fb_spectra.get(species)
-            recombining_ion = recombining_species.get(species)
 
-            if (
-                    fb_spectra is not None
-                    and recombining_ion in EM.DEM
-            ):
+            if fb_spectra is not None:
                 species_spectrum += np.sum(
-                    fb_spectra * EM.DEM[recombining_ion][:, None],
+                    fb_spectra,
                     axis=0,
                 )
 

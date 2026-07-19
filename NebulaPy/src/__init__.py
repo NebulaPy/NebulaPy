@@ -13,7 +13,6 @@ from .PyNeb import pyneb
 from .CIE import cieMode
 from .LoggingConfig import NebulaError, configure_logging, get_logger
 from .Progress import Progress, track
-from .ProcessPool import ProcessPool
 from NebulaPy import __version__
 # Ion-symbol utilities
 from .Utils import getPionSymbol, get_element_symbol, get_spectroscopic_symbol
