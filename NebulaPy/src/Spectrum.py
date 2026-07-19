@@ -9,11 +9,10 @@ import queue
 import traceback
 import numpy as np
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
-from NebulaPy.src.NebulaProgress import NebulaProgress, track
+from NebulaPy.src.Progress import Progress, track
 
 logger = get_logger(__name__)
 
-#from .CIE import cieMode
 import ChiantiPy.tools.filters as chfilters
 
 ##############################################################################
@@ -32,13 +31,12 @@ def compute_row_spectrum(workerQ, doneQ, spectrum_obj, timeout):
             if task is None:
                 break
 
-            level, row, row_temperature, row_ne, row_grid_mask = task
+            level, row, row_temperature, row_ne = task
 
             row_species_nonFBCoeff, row_species_FBCoeff = (
-                spectrum_obj.computeSpeciesSpectraCoeff(
+                spectrum_obj.compute_species_spectra_coeff(
                     row_temperature=row_temperature,
                     row_ne=row_ne,
-                    row_grid_mask=row_grid_mask,
                 )
             )
 
@@ -84,7 +82,6 @@ class spectrum:
             doLine=False,
             doTwophoton=False,
             elements=None,
-            CIE=False,
             filtername=None,
             filterfactor=None,
             allLines=True,
@@ -156,18 +153,10 @@ class spectrum:
         self.gridSize = gridSize
 
         # Multiprocessing  ##########################################
-
         self.proc = min(MPNcores, mp.cpu_count())
         logger.info("Multiprocessing: using %s of %s available CPU cores", self.proc, mp.cpu_count())
 
-        #todo: CIE can be input to the generateSpectrum Method rather than Spectrum class itself.
-        '''
-        self.CIE = CIE
-        self.NEQ = not CIE
-        if CIE:
-            cie = cieMode(progress=True)
-            cie.load_cie()
-        '''
+
 
     ######################################################################################
     # Build Species Attributes
@@ -181,6 +170,8 @@ class spectrum:
         elements : list
             Elements used in the spectral calculation.
         """
+        #todo: only chianti species is implemented. PyNeb species is not implemented yet.
+
         # Initialize CHIANTI object (dummy plasma state)
         chianti_spec = chianti(
             pion_elements=elements,
@@ -315,26 +306,24 @@ class spectrum:
         )
 
 
-
-
     ######################################################################################
     # Print Line Cataloger
     ######################################################################################
-    def LineCataloger(self, Filebase="", OutDir=""):
+    def line_cataloger(self, Filebase="", OutDir=""):
 
         if not Filebase:
             raise NebulaError(
-                "LineCataloger: output file base name not specified."
+                "line_cataloger: output file base name not specified."
             )
 
         if not OutDir:
             raise NebulaError(
-                "LineCataloger: output directory not specified."
+                "line_cataloger: output directory not specified."
             )
 
         if not os.path.isdir(OutDir):
             raise NebulaError(
-                f"LineCataloger: output directory does not exist: {OutDir}"
+                f"line_cataloger: output directory does not exist: {OutDir}"
             )
 
         outfile = os.path.join(
@@ -456,7 +445,7 @@ class spectrum:
     ######################################################################################
     # COMPUTE SPECIES SPECTRA RATE
     ######################################################################################
-    def computeSpeciesSpectraCoeff(self, row_temperature, row_ne, row_grid_mask):
+    def compute_species_spectra_coeff(self, row_temperature, row_ne):
 
         # Determine the number of temperature values
         N_temp = len(row_temperature)
@@ -466,8 +455,8 @@ class spectrum:
         '''
 
         # Store spectra by emission process
-        species_nonFBCoeff = {}
-        species_FBCoeff = {}
+        species_nonfb_coefficients = {}
+        species_fb_coefficients = {}
 
         # info: looping over species to calculate the emission rate from each process
         for species in self.chianti_species_attributes.keys():
@@ -487,27 +476,27 @@ class spectrum:
             #    #logger.warning(f"{count} Skipping {species} ...")
             #    continue
 
-            species_processes = self.chianti_species_attributes[species]['keys']
+            processes = self.chianti_species_attributes[species]['keys']
             CHIANTI = chianti(
                 chianti_ion=species,
                 temperature=row_temperature,
                 ne=row_ne,
             )
 
-            # Bremsstrahlung/free-free emission
-            if self.bremsstrahlung and 'ff' in species_processes:
+            # Bremsstrahlung (free-free emission)
+            if self.bremsstrahlung and 'ff' in processes:
                 bremsstrahlung_coefficients = CHIANTI.get_bremsstrahlung_coefficients(
                     wavelength=self.WavelengthGrid
                 )
 
             # Free-bound emission
-            if self.freebound and 'fb' in species_processes:
+            if self.freebound and 'fb' in processes:
                 freebound_coefficients = CHIANTI.get_freebound_coefficients(
                     wavelength=self.WavelengthGrid
                 )
 
             # Line emission
-            if self.line and 'line' in species_processes:
+            if self.line and 'line' in processes:
                 line_coefficients = CHIANTI.get_line_coefficients(
                     wavelength=self.WavelengthGrid
                 )
@@ -515,8 +504,7 @@ class spectrum:
                 line_coefficients = line_coefficients / row_ne[:, None]
 
             # Two-photon emission
-            if self.twophoton and 'line' in species_processes:
-
+            if self.twophoton and 'line' in processes:
                 if (Z - ionstage) in [0, 1] and not dielectronic:
                     twophoton_coefficients = CHIANTI.get_twophoton_coefficients(
                         wavelength=self.WavelengthGrid
@@ -537,27 +525,27 @@ class spectrum:
             '''
 
             # Free-free + line + two-photon emission
-            nonFBCoeff = (
+            nonfb_coefficients = (
                     bremsstrahlung_coefficients
                     + line_coefficients
                     + twophoton_coefficients
             )
 
-            species_nonFBCoeff[species] = nonFBCoeff * row_grid_mask[:, None]
+            species_nonfb_coefficients[species] = nonfb_coefficients
 
             # Free-bound emission only
-            species_FBCoeff[species] = freebound_coefficients * row_grid_mask[:, None]
+            species_fb_coefficients[species] = freebound_coefficients
 
         '''
         return species_spectra_coefficients
         '''
-        return species_nonFBCoeff, species_FBCoeff
+        return species_nonfb_coefficients, species_fb_coefficients
 
 
     ######################################################################################
     # generate spectrum for 2D data
     ######################################################################################
-    def generateSpectrum(
+    def generate_spectrum(
             self,
             temperature,
             ne,
@@ -601,18 +589,6 @@ class spectrum:
                     f"shapes for species {species}."
                 )
 
-        #todo: CIE can be input to the generateSpectrum Method rather than Spectrum class itself.
-        '''
-        if self.NEQ:
-            logger.warning(
-                "NEI mode is not implemented yet; using CIE instead."
-            )
-
-        elif self.CIE:
-            logger.warning(
-                "Using collisional ionization equilibrium (CIE)."
-            )
-        '''
 
         ##########################################################################
         # Setting Up wavelength grid
@@ -636,13 +612,31 @@ class spectrum:
 
         ##########################################################################
         # Allocate only binned spectra
-        SpeciesSpectrum = {
-            species: np.zeros(
-                (EM.Nbins, self.N_wvl),
-                dtype=np.float64
-            )
+        coefficient_shape = (EM.Nbins, self.N_wvl)
+
+        species_nonfb_spectra = {
+            species: np.zeros(coefficient_shape, dtype=np.float64)
             for species in species_densities
-        }
+        } if (self.bremsstrahlung or self.line or self.twophoton) else {}
+
+        species_fb_spectra = {
+            species: np.zeros(coefficient_shape, dtype=np.float64)
+            for species in species_densities
+        } if self.freebound else {}
+
+        ##########################################################################
+        # Map emitting ion q to recombining ion q+1
+        recombining_species = {}
+
+        for chianti_species, attributes in self.chianti_species_attributes.items():
+            higher_ion = attributes.get("higher", 0)
+
+            if higher_ion == 0:
+                continue
+
+            emitting_ion = getPionSymbol(chianti_species)
+            recombining_ion = getPionSymbol(higher_ion)
+            recombining_species[emitting_ion] = recombining_ion
 
         ##########################################################################
         # Multiprocessing row spectra calculation
@@ -663,7 +657,7 @@ class spectrum:
                     AllTasks.append(
                         (level, row,
                          temperature[level, row],
-                         ne[level, row], grid_mask[level, row])
+                         ne[level, row])
                     )
             Ntasks = len(AllTasks)
 
@@ -707,7 +701,7 @@ class spectrum:
 
             logger.debug("Computing spectrum")
 
-            with NebulaProgress(
+            with Progress(
                     "Computing species spectra",
                     Ntasks,
                     unit="tasks",
@@ -720,8 +714,8 @@ class spectrum:
                         status,
                         level,
                         row,
-                        result_or_error,
-                        coefficients_or_traceback,
+                        nonFBCoeff_or_error,
+                        FBCoeff_or_traceback,
                     ) = doneQ.get()
 
                     if status == "ERROR":
@@ -735,13 +729,13 @@ class spectrum:
                             "Spectrum worker failed at grid level %s, row %s: %s",
                             level,
                             row,
-                            result_or_error,
+                            nonFBCoeff_or_error,
                         )
                         logger.debug(
                             "Spectrum worker traceback:\n%s",
-                            coefficients_or_traceback,
+                            FBCoeff_or_traceback,
                         )
-                        raise NebulaError(result_or_error)
+                        raise NebulaError(nonFBCoeff_or_error)
 
                     if status != "RESULT":
                         for p in processes:
@@ -753,25 +747,65 @@ class spectrum:
                             f"Unknown multiprocessing result status: {status!r}"
                         )
 
-                    row_species_nonFBCoeff = result_or_error
-                    row_species_FBCoeff = coefficients_or_traceback
+                    row_species_nonfb_coefficients = nonFBCoeff_or_error
+                    row_species_fb_coefficients = FBCoeff_or_traceback
+
+                    row_mask = grid_mask[level, row][:, None]
+
+                    row_species_nonfb_coefficients = {
+                        species: coefficients * row_mask
+                        for species, coefficients
+                        in row_species_nonfb_coefficients.items()
+                    }
+
+                    row_species_fb_coefficients = {
+                        species: coefficients * row_mask
+                        for species, coefficients
+                        in row_species_fb_coefficients.items()
+                    }
 
                     row_bins = EM.DEM_indices[level, row]
 
-                    for chianti_species, spectra in row_species_nonFBCoeff.items():
-                        pion_species = getPionSymbol(chianti_species)
-                        if pion_species not in SpeciesSpectrum:
-                            continue
+                    occupied_bins = np.unique(
+                        row_bins[(row_bins >= 0) & (row_bins < EM.Nbins)]
+                    )
 
-                        for bin_idx in range(EM.Nbins):
-                            mask = row_bins == bin_idx
-                            if not np.any(mask):
+                    for bin_idx in occupied_bins:
+                        bin_mask = row_bins == bin_idx
+
+                    # Only CHIANTI ions are currently supported by the spectrum calculation.
+                    # PyNeb species are not yet implemented.
+                        for chianti_species in self.chianti_species_attributes:
+                            pion_species = getPionSymbol(chianti_species)
+
+                            if (
+                                    pion_species not in species_nonfb_spectra
+                                    and pion_species not in species_fb_spectra
+                            ):
                                 continue
 
-                            SpeciesSpectrum[pion_species][bin_idx, :] += np.sum(
-                                spectra[mask, :],
-                                axis=0
-                            )
+                            if pion_species in species_nonfb_spectra:
+                                nonfb_coefficients = row_species_nonfb_coefficients.get(
+                                    chianti_species
+                                )
+
+                                if nonfb_coefficients is not None:
+                                    species_nonfb_spectra[pion_species][bin_idx, :] += np.sum(
+                                        nonfb_coefficients[bin_mask, :],
+                                        axis=0,
+                                    )
+
+                            if pion_species in species_fb_spectra:
+                                fb_coefficients = row_species_fb_coefficients.get(
+                                    chianti_species
+                                )
+
+                                if fb_coefficients is not None:
+                                    species_fb_spectra[pion_species][bin_idx, :] += np.sum(
+                                        fb_coefficients[bin_mask, :],
+                                        axis=0,
+                                    )
+
 
                     completed += 1
                     progress.advance()
@@ -781,22 +815,49 @@ class spectrum:
 
         ##########################################################################
         # Multiply by DEM and sum over temperature bins
-
         Spectrum = {}
 
-        for species, binned_spectra in SpeciesSpectrum.items():
-            weighted_binned_spectra = (
-                    binned_spectra * EM.DEM[species][:, None]
-            )
-
-            Spectrum[species] = np.sum(
-                weighted_binned_spectra,
-                axis=0
-            )
-
-        integrated_spectrum = np.sum(
-            list(Spectrum.values()),
-            axis=0
+        spectrum_species = (
+                set(species_nonfb_spectra)
+                | set(species_fb_spectra)
         )
+
+        for species in spectrum_species:
+            species_spectrum = np.zeros(self.N_wvl, dtype=np.float64)
+
+            # Non-free-bound emission from ion q uses DEM[q].
+            nonfb_spectra = species_nonfb_spectra.get(species)
+
+            if nonfb_spectra is not None and species in EM.DEM:
+                species_spectrum += np.sum(
+                    nonfb_spectra * EM.DEM[species][:, None],
+                    axis=0,
+                )
+
+            # Free-bound emission from ion q uses DEM[q+1].
+            fb_spectra = species_fb_spectra.get(species)
+            recombining_ion = recombining_species.get(species)
+
+            if (
+                    fb_spectra is not None
+                    and recombining_ion in EM.DEM
+            ):
+                species_spectrum += np.sum(
+                    fb_spectra * EM.DEM[recombining_ion][:, None],
+                    axis=0,
+                )
+
+            Spectrum[species] = species_spectrum
+
+        if Spectrum:
+            integrated_spectrum = np.sum(
+                np.stack(list(Spectrum.values())),
+                axis=0,
+            )
+        else:
+            integrated_spectrum = np.zeros(
+                self.N_wvl,
+                dtype=np.float64,
+            )
 
         self.Spectrum = integrated_spectrum
