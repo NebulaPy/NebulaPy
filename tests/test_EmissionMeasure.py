@@ -15,7 +15,7 @@ TMAX = 1.0e9
 NBINS = 200
 
 
-def test_extracted_snapshot_dem_reference_values():
+def test_extracted_snapshot_dem_reference_values(record_property):
     """The optimized DEM calculation reproduces SILO-derived values."""
     assert DATA_FILE.is_file()
 
@@ -65,11 +65,12 @@ def test_extracted_snapshot_dem_reference_values():
         )
 
     simulation_time_kyr = simulation_time_s / (365.25 * 24.0 * 3600.0 * 1.0e3)
-    print(
-        f"\n  Simulation : {SIMULATION_NAME}"
+    record_property(
+        "test_summary",
+        f"  Simulation : {SIMULATION_NAME}"
         f"\n  Snapshot   : {SNAPSHOT_TAG}"
         f"\n  Time       : {simulation_time_kyr:.6f} kyr"
         f"\n  Grid       : {temperature.shape}"
         f"\n  DEM        : T={TMIN:.0e}-{TMAX:.0e} K, {NBINS} bins"
-        f"\n  Species    : {', '.join(species_densities)}"
+        f"\n  Species    : {', '.join(species_densities)}",
     )

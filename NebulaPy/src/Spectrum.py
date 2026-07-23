@@ -1,5 +1,5 @@
 from .Chianti import chianti
-from NebulaPy.src.Utils import getPionSymbol
+from NebulaPy.src.Utils import getPionSymbol, get_element_symbol
 import NebulaPy.src.Chianti as nebula_chianti
 import NebulaPy.src.Constants as const
 import os
@@ -103,6 +103,7 @@ class spectrum:
             doLine=False,
             doTwophoton=False,
             elements=None,
+            ion_list=None,
             filtername=None,
             filterfactor=None,
             allLines=True,
@@ -129,6 +130,10 @@ class spectrum:
         elements : sequence
             Elements passed to :class:`chianti` when building the ion metadata
             container.
+        ion_list : sequence of str, optional
+            Ions included in the calculation, using PION notation such as
+            ``["O6+", "O7+", "Fe24+"]``. If omitted, all available ions
+            belonging to the selected elements are included.
         filtername, filterfactor
             Stored line-profile configuration for API compatibility.  The
             values are not consumed directly by this class at present.
@@ -206,12 +211,132 @@ class spectrum:
         ]
         logger.info("Radiative processes: %s", ", ".join(enabled_processes))
 
+        #####################################################################
+        # check for elements
+        if elements is None:
+            raise NebulaError(
+                "elements must be supplied for the spectrum calculation."
+            )
 
+        if isinstance(elements, str):
+            elements = [elements]
+        else:
+            elements = list(elements)
+
+        if not elements:
+            raise NebulaError(
+                "elements must contain at least one element."
+            )
+
+        unsupported_elements = set(elements) - set(const.SUPPORTED_ELEMENTS)
+
+        if unsupported_elements:
+            raise NebulaError(
+                "Unsupported elements: "
+                + ", ".join(sorted(unsupported_elements))
+                + ". Supported elements are: "
+                + ", ".join(const.SUPPORTED_ELEMENTS)
+            )
+
+        if set(elements) == set(const.SUPPORTED_ELEMENTS):
+            logger.info(
+                "Spectrum elements: using all supported elements"
+            )
+        else:
+            logger.info(
+                "Spectrum elements restricted to: %s",
+                ", ".join(elements),
+            )
+
+        if ion_list is not None:
+            if isinstance(ion_list, str):
+                ion_list = [ion_list]
+            else:
+                ion_list = list(ion_list)
+
+            if not ion_list:
+                raise NebulaError(
+                    "ion_list must contain at least one ion when supplied."
+                )
+
+            missing_elements = {
+                get_element_symbol(ion)
+                for ion in ion_list
+            } - set(elements)
+
+            if missing_elements:
+                raise NebulaError(
+                    "Elements required by ion_list are missing from elements: "
+                    + ", ".join(sorted(missing_elements))
+                )
+
+            logger.info(
+                "Spectrum ions restricted to: %s",
+                ", ".join(ion_list),
+            )
+        else:
+            logger.info(
+                "Spectrum ions: using all available ions for selected elements"
+            )
+
+        #####################################################################
         # The mapping is populated as ``CHIANTI ion name -> ion metadata``.
         self.chianti_species_attributes = {}
         # Discover every ion and supported process for the requested elements.
         self.build_species_attributes(elements)
+        # Keep all species when ion_list is None.
+        self.ion_list = ion_list
+        self.required_density_ions = None
+        # Otherwise, retain only the requested ions.
+        if ion_list is not None:
+            requested_ions = set(ion_list)
+            selected_species = {
+                chianti_ion: attributes
+                for chianti_ion, attributes
+                in self.chianti_species_attributes.items()
+                if getPionSymbol(chianti_ion) in requested_ions
+            }
+            available_ions = {
+                getPionSymbol(chianti_ion)
+                for chianti_ion in selected_species
+            }
+            missing_ions = requested_ions - available_ions
+            if missing_ions:
+                raise NebulaError(
+                    "Requested ions are unavailable: "
+                    + ", ".join(sorted(missing_ions))
+                )
+            self.chianti_species_attributes = selected_species
 
+            required_density_ions = list(dict.fromkeys(ion_list))
+            if self.freebound:
+                freebound_dependencies = set()
+                for attributes in selected_species.values():
+                    lower_chianti_ion = attributes.get("lower", 0)
+                    if "fb" in attributes["keys"] and lower_chianti_ion:
+                        freebound_dependencies.add(
+                            getPionSymbol(lower_chianti_ion)
+                        )
+
+                required_density_ions.extend(
+                    sorted(
+                        freebound_dependencies - set(required_density_ions)
+                    )
+                )
+
+            self.required_density_ions = required_density_ions
+
+            if set(required_density_ions) != set(ion_list):
+                logger.info(
+                    "Additional ion densities required for free-bound emission: %s",
+                    ", ".join(
+                        ion
+                        for ion in required_density_ions
+                        if ion not in set(ion_list)
+                    ),
+                )
+
+        #####################################################################
         # The numerical wavelength grid is deferred until spectrum generation.
         self.WavelengthGrid = []
         # ``userGrid`` chooses uniform sampling instead of CHIANTI line sampling.
@@ -825,7 +950,7 @@ class spectrum:
 
         proc = min(self.proc, Ntasks)
         logger.info(
-            "Multiprocessing: %s tasks, %s levels, up to %s workers",
+            "Multiprocessing: %s total tasks across %s levels, up to %s workers",
             Ntasks,
             N_grid_level,
             proc,

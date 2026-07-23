@@ -1077,10 +1077,24 @@ class pion():
     ######################################################################################
     # GET ALL ION NUMBER DENSITIES
     ######################################################################################
-    def get_species_number_densities(self, silo_instant):
+    def get_species_number_densities(self, silo_instant, ion_list=None):
+        """Return number-density grids for all or selected ion species.
+
+        Parameters
+        ----------
+        silo_instant
+            Simulation files belonging to one time instant.
+        ion_list : sequence of str, optional
+            PION ion symbols to process. If omitted, process every species in
+            the loaded chemistry container.
+        """
         species_number_densities = {}
 
-        species_list = self.chemistry_container['nebulapy_all_species']
+        species_list = (
+            self.chemistry_container['nebulapy_all_species']
+            if ion_list is None
+            else list(ion_list)
+        )
 
         for ion in track(
                 species_list,

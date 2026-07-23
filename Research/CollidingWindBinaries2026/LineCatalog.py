@@ -104,7 +104,6 @@ NebulaSpectrum = nebula.spectrum(
     userGrid=True,
     gridSize=3000,
     allLines=True,
-    progress=True
 )
 
 wavelength = NebulaSpectrum.WavelengthGrid
