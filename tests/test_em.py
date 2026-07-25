@@ -15,7 +15,7 @@ TMAX = 1.0e9
 NBINS = 200
 
 
-def test_extracted_snapshot_dem_reference_values(record_property):
+def test_em(record_property):
     """The optimized DEM calculation reproduces SILO-derived values."""
     assert DATA_FILE.is_file()
 

@@ -7,10 +7,8 @@ _PASSED_TEST_SUMMARIES = {}
 def pytest_collection_modifyitems(items):
     """Replace implementation-oriented node IDs with user-facing test names."""
     readable_test_names = {
-        "test_cie_end_to_end": "CIE ion-balance reference test",
-        "test_extracted_snapshot_dem_reference_values": (
-            "Emission measure reference test"
-        ),
+        "test_cie": "CIE ion-balance reference test",
+        "test_em": "Emission measure reference test",
     }
 
     for item in items:
