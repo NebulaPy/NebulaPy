@@ -73,7 +73,7 @@ def main():
     geometry = neq_pion.geometry_container
     if geometry["coordinate_sys"] != "cylindrical":
         raise NebulaError(
-            "oxygen_neq_ieq.py currently requires a 2D cylindrical snapshot"
+            "Requires a 2D cylindrical snapshot"
         )
 
     number_of_levels = geometry["Nlevel"]

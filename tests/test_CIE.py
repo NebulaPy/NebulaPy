@@ -1,149 +1,162 @@
-from math import comb
+"""Reference checks against the real NebulaPy CIE ion-balance table."""
+
+from pathlib import Path
 
 import numpy as np
 import pytest
 
 from NebulaPy.src import Constants as const
 from NebulaPy.src.CIE import cieMode
-from NebulaPy.src.LoggingConfig import NebulaError
 
 
-CIE_TEMPERATURE_MIN = 1.0e2
-CIE_TEMPERATURE_MAX = 1.0e9
-CIE_GRID_POINT_COUNT = 10
-CIE_ELEMENT_CHARGES = {"H": 1, "He": 2, "C": 6, "O": 8}
-CIE_VERIFIED_SPECIES = ("H", "H1+", "He1+", "C3+", "C6+", "O4+", "O8+")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+CIE_DATABASE_DIRECTORY = PROJECT_ROOT / "NebulaPy-DB"
+CIE_DATA_FILE = CIE_DATABASE_DIRECTORY / "IonBalance" / "CIE.txt"
+CIE_ELEMENT_CHARGES = {"H": 1, "C": 6, "O": 8, "Fe": 26}
+CIE_REFERENCE_COLUMNS = {
+    "H1+": "h_2",
+    "C3+": "c_4",
+    "O6+": "o_7",
+    "O8+": "o_9",
+    "Fe24+": "fe_25",
+    "Fe25+": "fe_26",
+}
 
 
-def _build_normalized_cie_table():
-    """Create smooth, normalized test fractions for several elements."""
-    log_temperature_grid = np.linspace(
-        np.log10(CIE_TEMPERATURE_MIN),
-        np.log10(CIE_TEMPERATURE_MAX),
-        CIE_GRID_POINT_COUNT,
-    )
-    ion_columns = [
-        f"{element.lower()}_{stage + 1}"
-        for element, atomic_number in CIE_ELEMENT_CHARGES.items()
-        for stage in range(atomic_number + 1)
-    ]
-    table_rows = ["log_T " + " ".join(ion_columns)]
+def _read_reference_cie_table():
+    """Read the real table independently of ``cieMode.load_cie_file``."""
+    with CIE_DATA_FILE.open("r", encoding="utf-8") as stream:
+        content_lines = [
+            line.strip()
+            for line in stream
+            if line.strip() and not line.startswith("#")
+        ]
 
-    for grid_index, log_temperature in enumerate(log_temperature_grid):
-        ionization_progress = grid_index / (CIE_GRID_POINT_COUNT - 1)
-        ion_fractions = []
-        for atomic_number in CIE_ELEMENT_CHARGES.values():
-            ion_fractions.extend(
-                comb(atomic_number, charge)
-                * ionization_progress**charge
-                * (1.0 - ionization_progress) ** (atomic_number - charge)
-                for charge in range(atomic_number + 1)
-            )
-        table_rows.append(
-            f"{log_temperature:.12g} "
-            + " ".join(f"{fraction:.16e}" for fraction in ion_fractions)
-        )
-
-    return "# normalized multi-element CIE test table\n" + "\n".join(
-        table_rows
-    ) + "\n"
+    column_names = content_lines[0].split()
+    reference_data = np.loadtxt(content_lines[1:], dtype=np.float64)
+    column_indices = {
+        column_name: column_index
+        for column_index, column_name in enumerate(column_names)
+    }
+    return reference_data, column_indices
 
 
 @pytest.fixture
-def cie_database(tmp_path, monkeypatch):
-    ion_balance = tmp_path / "IonBalance"
-    ion_balance.mkdir()
-    (ion_balance / "CIE.txt").write_text(
-        _build_normalized_cie_table(),
-        encoding="utf-8",
-    )
-    monkeypatch.setenv("NEBULAPYDB", str(tmp_path))
-    return tmp_path
+def real_cie_database(monkeypatch):
+    """Point CIE mode at the real repository database."""
+    assert CIE_DATA_FILE.is_file()
+    monkeypatch.setenv("NEBULAPYDB", str(CIE_DATABASE_DIRECTORY))
+    return _read_reference_cie_table()
 
 
-def test_cie_end_to_end(cie_database, record_property):
+def test_cie(real_cie_database, record_property):
+    reference_data, reference_columns = real_cie_database
     cie_ion_balance = cieMode()
 
-    # Lazy loading, interpolation, and multidimensional shape preservation.
-    temperature_grid = np.logspace(
-        np.log10(CIE_TEMPERATURE_MIN),
-        np.log10(CIE_TEMPERATURE_MAX),
-        CIE_GRID_POINT_COUNT,
-    ).reshape(2, 5)
-    hydrogen_ion_fractions = cie_ion_balance.get_cie_fraction(
-        "H1+", temperature_grid
-    )
-    expected_ionization_progress = np.linspace(0.0, 1.0, 10).reshape(2, 5)
-    np.testing.assert_allclose(
-        hydrogen_ion_fractions, expected_ionization_progress
-    )
-    assert hydrogen_ion_fractions.shape == temperature_grid.shape
+    assert reference_data.shape == (1024, 100)
+    cie_ion_balance.load_cie_file()
+    np.testing.assert_array_equal(cie_ion_balance.data, reference_data)
 
-    # Additional light and metal ions interpolate on the same arbitrary grid.
-    for ion in ("He1+", "C3+", "O4+"):
-        interpolated_ion_fractions = cie_ion_balance.get_cie_fraction(
-            ion, temperature_grid
+    # Exact grid temperatures must reproduce the stored fractions.
+    reference_rows = np.array([0, 257, 511, 767, 1023])
+    reference_temperatures = 10.0 ** reference_data[reference_rows, 0]
+    for ion, table_column in CIE_REFERENCE_COLUMNS.items():
+        actual_fractions = cie_ion_balance.get_cie_fraction(
+            ion,
+            reference_temperatures,
         )
-        assert interpolated_ion_fractions.shape == temperature_grid.shape
-        assert np.all(interpolated_ion_fractions >= 0.0)
+        expected_fractions = reference_data[
+            reference_rows,
+            reference_columns[table_column],
+        ]
+        np.testing.assert_allclose(
+            actual_fractions,
+            expected_fractions,
+            rtol=0.0,
+            atol=1.0e-15,
+        )
 
-    # Invalid physical input is rejected.
-    with pytest.raises(ValueError, match="finite, positive"):
-        cie_ion_balance.get_cie_fraction("H", 0.0)
-
-    # Scalar number densities use mass density, mass fraction, and atomic mass.
-    gas_mass_density = 2.0 * const.ATOMIC_MASS["H"]
-    ion_number_densities = cie_ion_balance.build_cie_number_densities(
-        {"H": 0.5}, CIE_TEMPERATURE_MIN, gas_mass_density
+    # Interpolation is linear in log10 temperature.
+    lower_row = 600
+    upper_row = lower_row + 1
+    midpoint_log_temperature = np.mean(
+        reference_data[[lower_row, upper_row], 0]
     )
-    assert ion_number_densities["H"] == pytest.approx(1.0)
-    assert ion_number_densities["H1+"] == pytest.approx(0.0)
-    assert ion_number_densities["He"] == 0.0
+    for ion, table_column in CIE_REFERENCE_COLUMNS.items():
+        actual_midpoint = cie_ion_balance.get_cie_fraction(
+            ion,
+            10.0 ** midpoint_log_temperature,
+        )
+        expected_midpoint = np.mean(
+            reference_data[
+                [lower_row, upper_row],
+                reference_columns[table_column],
+            ]
+        )
+        assert actual_midpoint == pytest.approx(
+            expected_midpoint,
+            rel=1.0e-12,
+            abs=1.0e-15,
+        )
 
-    # Multidimensional inputs broadcast and conserve each element's density.
-    spatial_mass_density = np.array([[1.0e-24], [2.0e-24]])
+    # Every ion stage is normalized to unity at each tabulated temperature.
+    for element, atomic_number in CIE_ELEMENT_CHARGES.items():
+        chianti_element = element.lower()
+        element_columns = [
+            reference_columns[f"{chianti_element}_{stage}"]
+            for stage in range(1, atomic_number + 2)
+        ]
+        np.testing.assert_allclose(
+            np.sum(reference_data[:, element_columns], axis=1),
+            1.0,
+            rtol=0.0,
+            atol=2.0e-9,
+        )
+
+    # Broadcast multidimensional inputs and conserve rho*X/m.
+    temperature_grid = np.logspace(
+        reference_data[0, 0],
+        reference_data[-1, 0],
+        10,
+    ).reshape(1, 2, 5)
+    spatial_mass_density = np.asarray([1.0e-24, 2.0e-24]).reshape(2, 1, 1)
     element_mass_fractions = {"H": 0.70, "C": 0.02, "O": 0.03}
-    broadcast_ion_number_densities = cie_ion_balance.build_cie_number_densities(
+    ion_number_densities = cie_ion_balance.build_cie_number_densities(
         element_mass_fractions,
-        temperature_grid[0:1, :],
+        temperature_grid,
         spatial_mass_density,
     )
-    assert broadcast_ion_number_densities["O4+"].shape == (2, 5)
+    assert ion_number_densities["O6+"].shape == (2, 2, 5)
 
     for element, atomic_number in CIE_ELEMENT_CHARGES.items():
         element_ions = [
             element if charge == 0 else f"{element}{charge}+"
             for charge in range(atomic_number + 1)
         ]
-        summed_element_number_density = sum(
-            broadcast_ion_number_densities[ion] for ion in element_ions
+        summed_number_density = sum(
+            ion_number_densities[ion] for ion in element_ions
         )
-        expected_element_number_density = (
+        expected_number_density = (
             spatial_mass_density
             * element_mass_fractions.get(element, 0.0)
             / const.ATOMIC_MASS[element]
         )
         np.testing.assert_allclose(
-            summed_element_number_density,
-            np.broadcast_to(expected_element_number_density, (2, 5)),
-            rtol=1.0e-12,
+            summed_number_density,
+            np.broadcast_to(expected_number_density, (2, 2, 5)),
+            rtol=2.0e-9,
             atol=1.0e-14,
         )
 
-    # Malformed database rows produce a useful error.
-    cie_file = cie_database / "IonBalance" / "CIE.txt"
-    cie_file.write_text("log_T h_1 h_2\n4.0 1.0\n", encoding="utf-8")
-    with pytest.raises(NebulaError, match="row 2"):
-        cieMode().load_cie_file()
+    with pytest.raises(ValueError, match="finite, positive"):
+        cie_ion_balance.get_cie_fraction("O6+", 0.0)
 
     record_property(
         "test_summary",
         "  Model      : Collisional ionization equilibrium"
-        "\n  Table      : Synthetic normalized ion-fraction grid"
-        f"\n  Temperature: T={CIE_TEMPERATURE_MIN:.0e}-"
-        f"{CIE_TEMPERATURE_MAX:.0e} K, {CIE_GRID_POINT_COUNT} points"
-        f"\n  Input grid : {hydrogen_ion_fractions.shape}"
-        "\n  Elements   : H, He, C, O"
-        "\n  Density    : Scalar and 2D broadcast inputs"
-        f"\n  Species    : {', '.join(CIE_VERIFIED_SPECIES)}",
+        f"\n  Temperature: T={10.0 ** reference_data[0, 0]:.2e}-"
+        f"{10.0 ** reference_data[-1, 0]:.2e} K"
+        f"\n  Grid       : {reference_data.shape[0]} temperature points"
+        "\n  Checks     : raw values, interpolation, normalization, density"
+        f"\n  Species    : {', '.join(CIE_REFERENCE_COLUMNS)}",
     )

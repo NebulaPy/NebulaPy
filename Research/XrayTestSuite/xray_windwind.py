@@ -4,7 +4,6 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from NebulaPy.src import Constants as const
 from NebulaPy.src.LoggingConfig import configure_logging, get_logger
 
 # constants
@@ -12,71 +11,17 @@ cm2au = 6.68459e-14  # cm to au conversion factor
 x_axis = "wavelength"  # Options: "wavelength" or "energy"
 y_axis = "photon_per_energy"  # See plotting options below
 
-'''
-# Colliding wind binaries
-#Razer Blade -> Set up paths and filenames
-OutputDir = '/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum'  # Output image directory
-SiloDir = '/home/tony/Desktop/CWBs-2026/Silo-n128'  # Directory containing silo files
-Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
-start_time = 1.24e6  # in sec
-finish_time = None
-time_unit = 'sec'
-out_frequency = None
-SimulationName = "CWB"
-'''
 
-
-# Colliding wind binaries
+# Wind-Wind Collision
 #Macbook -> Set up paths and filenames
-OutputDir = '/Users/tony/Desktop/CWBs-NEMOv1/Post-Processing/WR140Test'  # Output image directory
-SiloDir = '/Users/tony/Desktop/CWBs-NEMOv1/Silo-n128'  # Directory containing silo files
-Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
-start_time = 14.35  # days
-finish_time = None
-time_unit = 'days'
-out_frequency = None
-SimulationName = "WR140"
-
-
-'''
-# Bowshock
-#Macbook -> Set up paths and filenames
-OutputDir = '/Users/tony/Desktop/Bowshock-Xray/Post-Processing/XraySpecTest2'  # Output image directory
-SiloDir = '/Users/tony/Desktop/Bowshock-Xray/silo'  # Directory containing silo files
-Filebase = 'Ostar_mhd-nemo-dep_d2n0128l3'  # Base name of the silo files
-start_time = 165  # days
+OutputDir = '/Users/tony/Desktop/XrayTest'  # Output image directory
+SiloDir = '/Users/tony/Desktop/XrayTest/wind-wind/silo'  # Directory containing silo files
+Filebase = 'e7_WRwind_d2l5n128_v1500'  # Base name of the silo files
+start_time = 23.154  # kyr
 finish_time = None
 time_unit = 'kyr'
 out_frequency = None
-SimulationName = "Bowshock"
-'''
-
-# edit here for Mimir
-'''
-#MIMIR -> Set up paths and filenames
-OutputDir = ''  # Output image directory
-SiloDir = ''  # Directory containing silo files
-Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
-start_time = 1.24e6  # in sec
-finish_time = None
-time_unit = 'sec'
-out_frequency = None
-SimulationName = "CWB"
-'''
-
-
-# Bowshock
-'''
-#Razer Blade -> Set up paths and filenames
-OutputDir = '/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum'  # Output image directory
-SiloDir = '/home/tony/Desktop/multi-ion-bowshock/sim-output/silo'  # Directory containing silo files
-Filebase = 'Ostar_mhd-nemo-dep_d2n0128l3'  # Base name of the silo files
-start_time = 161  # in kyr
-finish_time = 161.5
-time_unit = 'kyr'
-out_frequency = None
-SimulationName = "Bowshock_FF"
-'''
+SimulationName = "Wind-Wind Collision"
 
 def main():
     """Generate spectra without re-running this workflow in spawned workers."""
@@ -121,12 +66,12 @@ def main():
     # loading chemistry container for pion simulation data
     pion.load_chemistry()
     elements = pion.get_elements()
-    ion_list = ['Fe25+']
+    ion_list = None
 
     # initializing spectrum class
     NebulaSpectrum = nebula.spectrum(
-        min_wavelength=1.0,  # Minimum wavelength in Angstroms
-        max_wavelength=100,  # Maximum wavelength in Angstroms
+        min_wavelength=0.25,  # Minimum wavelength in Angstroms
+        max_wavelength=3.0,  # Maximum wavelength in Angstroms
         min_photon_energy=None,  # Minimum photon energy in keV # not implemented
         max_photon_energy=None,  # Maximum photon energy in keV # not implemented
         elements=elements,
@@ -158,8 +103,7 @@ def main():
             sim_time.unit,
         )
 
-        # Extract temperature and electron number density
-        '''
+        # Extract the physical grids and ion densities from the simulation.
         temperature = np.asarray(
             pion.get_parameter('Temperature', silo_instant),
             dtype=np.float64
@@ -168,42 +112,6 @@ def main():
         species_densities = pion.get_species_number_densities(
             silo_instant,
             ion_list=NebulaSpectrum.required_density_ions,
-        )
-        '''
-
-        temperature = np.asarray([[[1.0e7, 1.0e7]]])
-        ne = np.asarray([[[1.0e9, 1.0e9]]])
-        grid_volume = np.asarray([[[1.0, 1.0]]])
-        grid_mask = np.asarray([[[1.0, 0.0]]])
-
-        # Solar-like dummy composition. Convert the prescribed electron number
-        # density to mass density using the fully ionized electron-per-gram
-        # abundance, then distribute each element among its CIE ion stages.
-        element_mass_fractions = {
-            "H": 0.7381,
-            "He": 0.2485,
-            "C": 0.0024,
-            "N": 0.0007,
-            "O": 0.0057,
-            "Ne": 0.0013,
-            "Si": 0.0007,
-            "S": 0.0004,
-            "Fe": 0.0013,
-        }
-
-        fully_ionized_electrons_per_gram = sum(
-            element_mass_fractions[element]
-            * const.ATOMIC_NUMBER[element]
-            / const.ATOMIC_MASS[element]
-            for element in element_mass_fractions
-        )
-        gas_mass_density = ne / fully_ionized_electrons_per_gram
-
-        cie_ion_balance = nebula.cieMode()
-        species_densities = cie_ion_balance.build_cie_number_densities(
-            element_mass_fractions=element_mass_fractions,
-            temperature=temperature,
-            density=gas_mass_density,
         )
 
         NebulaSpectrum.generate_spectrum(

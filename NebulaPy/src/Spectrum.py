@@ -138,7 +138,8 @@ class spectrum:
             Stored line-profile configuration for API compatibility.  The
             values are not consumed directly by this class at present.
         allLines : bool
-            Stored line-selection flag for API compatibility.
+            Passed to CHIANTI when selecting spectral lines. If true, include
+            all available lines; if false, use CHIANTI's reduced line set.
         userGrid : bool
             If true, use a uniformly spaced wavelength grid.  Otherwise use
             the unique CHIANTI line wavelengths plus the requested endpoints.
@@ -162,6 +163,15 @@ class spectrum:
         self.filtername = filtername
         self.filterfactor = filterfactor
         self.allLines = allLines
+        if self.line:
+            logger.info(
+                "CHIANTI line selection: %s",
+                (
+                    "all available spectral lines"
+                    if self.allLines
+                    else "reduced spectral-line set"
+                ),
+            )
         # All progress helpers consult this single flag.
         self.progress = progress
 
@@ -804,6 +814,7 @@ class spectrum:
                 if self.line and "line" in processes:
                     line_coefficients = CHIANTI.get_line_coefficients(
                         wavelength=self.WavelengthGrid,
+                        allLines=self.allLines,
                     )
                     line_coefficients = np.asarray(
                         line_coefficients,
