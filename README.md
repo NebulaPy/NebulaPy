@@ -73,7 +73,8 @@ in the `NebulaPy/problems` directory.
 
 ## Documentation
 
-Check the full documentation at [NebulaPy GitHub](https://github.com/arunmathewofficial/NebulaPy).
+Check the full API documentation at [nebulapy.github.io/NebulaPy](https://nebulapy.github.io/NebulaPy/),
+rebuilt automatically from the source on every commit to `main`.
 
 ## Support
 

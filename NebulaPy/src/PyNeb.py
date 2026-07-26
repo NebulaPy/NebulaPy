@@ -7,7 +7,6 @@ from NebulaPy.src import Utils as util
 from NebulaPy.src import Constants as const
 from NebulaPy.src import chianti as nebula_chianti
 import ChiantiPy.core as ch
-import pkg_resources
 import warnings
 from .Chianti import chianti
 import numpy as np
