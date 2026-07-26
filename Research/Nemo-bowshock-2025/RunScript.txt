@@ -1,0 +1,3 @@
+# run command for multiprocessing line luminosity calculation
+arun@mimir:/net/maedoc.ap.dias.ie/maedoc/home_cr/arun/Desktop/NebulaPy/problems/Nemo-bowshock-2025$ OMP_NUM_THREADS=1 python3 MPLinesLuminosity.py 
+
