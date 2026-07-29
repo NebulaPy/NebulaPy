@@ -71,8 +71,7 @@ def main():
         [[[1.0e9, 1.0e9]]],
         dtype=np.float64,
     )
-    grid_volume = np.asarray([[[1.0, 1.0]]], dtype=np.float64)
-    grid_mask = np.asarray([[[1.0, 0.0]]], dtype=np.float64)
+
 
     # Fully ionized electrons per gram:
     # sum(X_element * atomic_number / atomic_mass).
@@ -94,6 +93,44 @@ def main():
         temperature=temperature,
         density=gas_mass_density,
     )
+
+    # Baseline volumes; the temporary validation block below overrides only
+    # the active cell. Removing that block restores a 1 cm^3 active cell.
+    grid_volume = np.asarray([[[1.0, 1.0]]], dtype=np.float64)
+    grid_mask = np.asarray([[[1.0, 0.0]]], dtype=np.float64)
+
+    # --- Start removable CHIANTI EM-normalization block. ---
+    # Delete this block to restore the baseline 1 cm^3 active-cell volume.
+    #
+    # Match CHIANTI's volumetric emission-measure convention:
+    # EM_H = n_e * n_H * V, where n_H includes neutral and ionized hydrogen.
+    # NebulaPy applies the elemental abundance and CIE fraction through the
+    # physical ion densities supplied to Spectrum.
+    active_cell = (0, 0, 0)
+    target_emission_measure = 1.0e27
+    hydrogen_number_density = (
+        gas_mass_density
+        * element_mass_fractions["H"]
+        / const.ATOMIC_MASS["H"]
+    )
+    grid_volume[active_cell] = target_emission_measure / (
+        electron_number_density[active_cell]
+        * hydrogen_number_density[active_cell]
+    )
+    calculated_emission_measure = (
+        electron_number_density[active_cell]
+        * hydrogen_number_density[active_cell]
+        * grid_volume[active_cell]
+    )
+    logger.info(
+        "CHIANTI EM normalization: n_e=%.6e cm^-3, n_H=%.6e cm^-3, "
+        "V=%.12e cm^3, EM=%.6e cm^-3",
+        electron_number_density[active_cell],
+        hydrogen_number_density[active_cell],
+        grid_volume[active_cell],
+        calculated_emission_measure,
+    )
+    # --- End removable CHIANTI EM-normalization block. ---
 
     ###########################################################################
     # Independent radiative-process calculations
@@ -193,7 +230,7 @@ def main():
                 for process_name in process_wavelength_luminosities
             )
             + " Total "
-            "[erg s^-1 A^-1]"
+            "[erg s^-1 sr^-1 A^-1]"
         ),
         fmt="%.8e",
     )
@@ -235,21 +272,21 @@ def main():
     for spectrum_name, wavelength_luminosity in plotted_spectra.items():
         if y_axis == "energy_per_wavelength":
             y_values = wavelength_luminosity
-            ylabel = r"$L_\lambda$ [erg s$^{-1}$ $\AA^{-1}$]"
+            ylabel = r"$dL_\lambda/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
         elif y_axis == "energy_per_energy":
             y_values = (
                 wavelength_luminosity * kev_angstrom / energy**2
             )
-            ylabel = r"$L_E$ [erg s$^{-1}$ keV$^{-1}$]"
+            ylabel = r"$dL_E/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
         elif y_axis == "photon_per_wavelength":
             y_values = wavelength_luminosity / (energy * kev_to_erg)
-            ylabel = r"$N_\lambda$ [photons s$^{-1}$ $\AA^{-1}$]"
+            ylabel = r"$dN_\lambda/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
         elif y_axis == "photon_per_energy":
             energy_luminosity = (
                 wavelength_luminosity * kev_angstrom / energy**2
             )
             y_values = energy_luminosity / (energy * kev_to_erg)
-            ylabel = r"$N_E$ [photons s$^{-1}$ keV$^{-1}$]"
+            ylabel = r"$dN_E/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
         else:
             raise ValueError(
                 "y_axis must be 'energy_per_wavelength', "

@@ -189,19 +189,19 @@ def main():
 
     if y_axis == "energy_per_wavelength":
         y_values = wavelength_luminosity
-        ylabel = r"$L_\lambda$ [erg s$^{-1}$ $\AA^{-1}$]"
+        ylabel = r"$dL_\lambda/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
     elif y_axis == "energy_per_energy":
         y_values = (
             wavelength_luminosity
             * const.KEV_ANGSTROM
             / photon_energy**2
         )
-        ylabel = r"$L_E$ [erg s$^{-1}$ keV$^{-1}$]"
+        ylabel = r"$dL_E/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
     elif y_axis == "photon_per_wavelength":
         y_values = wavelength_luminosity / (
             photon_energy * 1.602176634e-9
         )
-        ylabel = r"$N_\lambda$ [photons s$^{-1}$ $\AA^{-1}$]"
+        ylabel = r"$dN_\lambda/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
     elif y_axis == "photon_per_energy":
         energy_luminosity = (
             wavelength_luminosity
@@ -211,7 +211,7 @@ def main():
         y_values = energy_luminosity / (
             photon_energy * 1.602176634e-9
         )
-        ylabel = r"$N_E$ [photons s$^{-1}$ keV$^{-1}$]"
+        ylabel = r"$dN_E/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
     else:
         raise ValueError(
             "y_axis must be 'energy_per_wavelength', "
@@ -247,7 +247,7 @@ def main():
     np.savetxt(
         spectrum_file,
         np.column_stack((wavelength, wavelength_luminosity)),
-        header="Wavelength[A] Spectrum[erg s^-1 A^-1]",
+        header="Wavelength[A] Spectrum[erg s^-1 sr^-1 A^-1]",
         fmt="%.8e",
     )
 

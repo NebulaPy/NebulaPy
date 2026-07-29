@@ -30,7 +30,7 @@ output_dir = '/home/tony/Desktop/multi-ion-bowshock/sim-output/coolmap'  # Outpu
 # Set up paths and filenames
 silo_dir = '/home/tony/Desktop/multi-ion-bowshock/high-res-silos-200kyr'  # Directory containing silo files
 filebase = 'Ostar_mhd-nemo-dep_d2n0384l3'  # Base name of the silo files
-database_path = '/home/tony/Desktop/NebulaPy/NebulaPy-DB'
+database_path = '/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0'
 
 ion = 'H'
 

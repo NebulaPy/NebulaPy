@@ -12,14 +12,6 @@ NebulaPy.src.Chianti module
    :undoc-members:
    :show-inheritance:
 
-NebulaPy.src.Downloader module
-------------------------------
-
-.. automodule:: NebulaPy.src.Downloader
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 NebulaPy.src.LineEmission module
 --------------------------------
 

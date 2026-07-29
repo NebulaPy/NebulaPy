@@ -1,3 +1,10 @@
+"""Compare ATLAS and blackbody SEDs using a coarse four-bin energy grid.
+
+The script generates solar-metallicity ATLAS models at three surface
+gravities plus a blackbody reference, exporting PION-formatted spectra for
+the four-group radiation-bin experiment.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00,1.359840e+01],
@@ -27,6 +34,5 @@ bb_sed = nebula.sed(
 )
 
 bb_sed.Blackbody()
-
 
 

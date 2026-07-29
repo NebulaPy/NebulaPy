@@ -1,3 +1,10 @@
+"""Generate a blackbody SED over the standard PION radiation energy groups.
+
+This small driver configures NebulaPy's SED interface, produces its default
+blackbody model, and writes plot/PION-format outputs to the selected
+directories for comparison with atmosphere models.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01], [1.126030e+01, 1.359840e+01],

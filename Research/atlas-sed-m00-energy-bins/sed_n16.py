@@ -1,3 +1,10 @@
+"""Compare ATLAS and blackbody SEDs using a refined 16-bin energy grid.
+
+The script adds a narrow high-energy group to the standard binning, then
+generates three solar-metallicity ATLAS gravities and a blackbody reference
+for PION radiation-group tests.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01],
@@ -39,5 +46,4 @@ bb_sed = nebula.sed(
 )
 
 bb_sed.Blackbody()
-
 

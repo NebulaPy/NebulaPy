@@ -1,3 +1,10 @@
+"""Extract geometry, chemistry, and plasma fields from PION Silo snapshots.
+
+The ``pion`` class complements pypion with NebulaPy-specific helpers for
+simulation times, grid masks and volumes, elemental and ion number densities,
+electron densities, and synthetic-emission workflows.
+"""
+
 import re
 import numpy as np
 from pypion.ReadData import ReadData

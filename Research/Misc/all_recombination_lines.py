@@ -1,3 +1,10 @@
+"""Export every PyNeb recombination-line wavelength for a selected ion.
+
+The script initialises NebulaPy's PyNeb interface at a representative plasma
+state, formats the available wavelengths to six decimal places, and writes
+the list to the configured line-catalogue directory.
+"""
+
 import NebulaPy.src as nebula
 import pandas
 import os

@@ -45,7 +45,7 @@ NebulaPy is a Python package, but a complete scientific installation also needs:
    NumPy, SciPy, PyNeb, pypion, and Rich.
 2. A local CHIANTI atomic database identified by `XUVTOP`.
 3. The native Silo library and its Python extension for reading PION output.
-4. The NebulaPy auxiliary database identified by `NEBULAPYDB` for stellar
+4. The NebulaPy auxiliary database identified by `NEBULAPY_DB` for stellar
    atmosphere models, CIE data, and cooling tables.
 
 The native Python interpreter and `Silo.so` must have the same architecture. For
@@ -215,12 +215,13 @@ export XUVTOP="/path/to/chianti/database"
 
 #### 2. Install the NebulaPy database
 
-The destination argument is the parent directory in which `NebulaPy-DB` will be
+The destination argument is the parent directory in which
+`nebulapy-db-1.0.0` will be
 created:
 
 ```bash
 download-database "$HOME"
-export NEBULAPYDB="$HOME/NebulaPy-DB"
+export NEBULAPY_DB="/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0"
 ```
 
 Persist both variables in the appropriate shell configuration:
@@ -228,19 +229,19 @@ Persist both variables in the appropriate shell configuration:
 ```bash
 # Linux
 echo 'export XUVTOP="/path/to/chianti/database"' >> "$HOME/.bashrc"
-echo 'export NEBULAPYDB="$HOME/NebulaPy-DB"' >> "$HOME/.bashrc"
+echo 'export NEBULAPY_DB="/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0"' >> "$HOME/.bashrc"
 source "$HOME/.bashrc"
 
 # macOS
 echo 'export XUVTOP="/path/to/chianti/database"' >> "$HOME/.zshrc"
-echo 'export NEBULAPYDB="$HOME/NebulaPy-DB"' >> "$HOME/.zshrc"
+echo 'export NEBULAPY_DB="/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0"' >> "$HOME/.zshrc"
 source "$HOME/.zshrc"
 ```
 
 Run the final environment check:
 
 ```bash
-python -c "import os, Silo; import NebulaPy.src; print('XUVTOP:', os.environ['XUVTOP']); print('NEBULAPYDB:', os.environ['NEBULAPYDB']); print('Silo:', Silo.__file__)"
+python -c "import os, Silo; import NebulaPy.src; print('XUVTOP:', os.environ['XUVTOP']); print('NEBULAPY_DB:', os.environ['NEBULAPY_DB']); print('Silo:', Silo.__file__)"
 ```
 
 ### Common installation errors

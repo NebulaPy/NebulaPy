@@ -1,3 +1,10 @@
+"""Generate the BD+60°2522 stellar SED from a solar-metallicity ATLAS model.
+
+The script bins a 35 kK, log(g)=3.5 Castelli–Kurucz atmosphere into the
+energy groups used by PION, writes the configured plot/PION outputs, and
+prints the resulting NebulaPy SED container.
+"""
+
 # Script to generate atlas SED with [M/H]=0.0 (solar metalicity),
 # Log g=3.5.
 # This give SED for BD+60◦2522 which has an effective
@@ -19,7 +26,7 @@ plot_dir = '/home/tony/Desktop/NebulaPy/Research'
 pion_format = '/home/tony/Desktop/NebulaPy/Research'
 
 atlas_sed = nebula.sed(
-    database='/home/tony/Desktop/NebulaPy/NebulaPy-DB',
+    database='/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0',
     energy_bins=EnergyBins,
     progress=True,
     plot=plot_dir,

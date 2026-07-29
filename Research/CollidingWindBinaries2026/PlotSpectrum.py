@@ -1,3 +1,10 @@
+"""Convert and plot a saved WR 140 X-ray spectrum at Earth.
+
+The script reads a wavelength-space luminosity spectrum, applies the adopted
+WR 140 distance, converts it to photon flux versus energy, and saves the
+resulting publication-style spectrum in the configured output directory.
+"""
+
 import os
 import numpy as np
 import matplotlib.pyplot as plt

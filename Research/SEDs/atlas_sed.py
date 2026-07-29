@@ -1,3 +1,10 @@
+"""Generate solar-metallicity Castelli–Kurucz ATLAS SED tables.
+
+The script rebins ATLAS atmospheres with log(g)=4.5 into the configured PION
+energy groups and writes the requested plot and PION-format products. Adjust
+the energy bins and output paths before running a new experiment.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01], [1.126030e+01, 1.359840e+01],

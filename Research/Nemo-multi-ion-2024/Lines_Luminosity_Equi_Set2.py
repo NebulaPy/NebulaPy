@@ -1,7 +1,15 @@
+"""Run the second equilibrium line-luminosity selection for the bow shock.
+
+This variant uses a second configured set of ions and transitions, derives
+CIE abundances from the simulated temperature field, and integrates CHIANTI
+line emission across each selected PION snapshot.
+"""
+
 import NebulaPy.src as nebula
 from NebulaPy.tools import util
 from pypion.ReadData import ReadData
 import astropy.units as unit
+
 import numpy as np
 import time
 

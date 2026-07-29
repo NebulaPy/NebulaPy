@@ -250,7 +250,7 @@ def main():
                     process_name.replace("-", "")
                     for process_name in process_wavelength_luminosities
                 )
-                + " Total [erg s^-1 A^-1]"
+                + " Total [erg s^-1 sr^-1 A^-1]"
             ),
             fmt="%.8e",
         )
@@ -297,17 +297,17 @@ def main():
         for spectrum_name, wavelength_luminosity in plotted_spectra.items():
             if y_axis == "energy_per_wavelength":
                 y_values = wavelength_luminosity
-                ylabel = r"$L_\lambda$ [erg s$^{-1}$ $\AA^{-1}$]"
+                ylabel = r"$dL_\lambda/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
             elif y_axis == "energy_per_energy":
                 y_values = (
                     wavelength_luminosity * kev_angstrom / energy**2
                 )
-                ylabel = r"$L_E$ [erg s$^{-1}$ keV$^{-1}$]"
+                ylabel = r"$dL_E/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
             elif y_axis == "photon_per_wavelength":
                 y_values = wavelength_luminosity / (
                     energy * kev_to_erg
                 )
-                ylabel = r"$N_\lambda$ [photons s$^{-1}$ $\AA^{-1}$]"
+                ylabel = r"$dN_\lambda/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
             elif y_axis == "photon_per_energy":
                 energy_luminosity = (
                     wavelength_luminosity * kev_angstrom / energy**2
@@ -315,7 +315,7 @@ def main():
                 y_values = energy_luminosity / (
                     energy * kev_to_erg
                 )
-                ylabel = r"$N_E$ [photons s$^{-1}$ keV$^{-1}$]"
+                ylabel = r"$dN_E/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
             else:
                 raise ValueError(
                     "y_axis must be 'energy_per_wavelength', "
@@ -422,7 +422,7 @@ def main():
                 process_name.replace("-", "")
                 for process_name in integrated_process_luminosities
             )
-            + " Total [erg s^-1 A^-1]"
+            + " Total [erg s^-1 sr^-1 A^-1]"
         ),
         fmt="%.8e",
     )
@@ -449,19 +449,19 @@ def main():
     ):
         if y_axis == "energy_per_wavelength":
             y_values = wavelength_luminosity
-            ylabel = r"$L_\lambda$ [erg s$^{-1}$ $\AA^{-1}$]"
+            ylabel = r"$dL_\lambda/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
         elif y_axis == "energy_per_energy":
             y_values = wavelength_luminosity * kev_angstrom / energy**2
-            ylabel = r"$L_E$ [erg s$^{-1}$ keV$^{-1}$]"
+            ylabel = r"$dL_E/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
         elif y_axis == "photon_per_wavelength":
             y_values = wavelength_luminosity / (energy * kev_to_erg)
-            ylabel = r"$N_\lambda$ [photons s$^{-1}$ $\AA^{-1}$]"
+            ylabel = r"$dN_\lambda/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
         else:
             energy_luminosity = (
                 wavelength_luminosity * kev_angstrom / energy**2
             )
             y_values = energy_luminosity / (energy * kev_to_erg)
-            ylabel = r"$N_E$ [photons s$^{-1}$ keV$^{-1}$]"
+            ylabel = r"$dN_E/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
 
         integrated_plot_y = y_values[integrated_plot_order]
         finite_plot_y = integrated_plot_y[

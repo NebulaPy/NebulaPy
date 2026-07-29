@@ -1,3 +1,10 @@
+"""Interpolate ion-specific radiative cooling rates from NebulaPy tables.
+
+The ``cooling`` class resolves a PION ion to its CHIANTI cooling table in
+``NEBULAPY_DB`` and evaluates cooling coefficients across electron-density
+and temperature arrays.
+"""
+
 import numpy as np
 import os
 from scipy import interpolate
@@ -25,7 +32,7 @@ class cooling():
         self.ion = pion_ion
 
         # get database
-        database = os.environ.get("NEBULAPYDB")
+        database = os.environ.get("NEBULAPY_DB")
         # Check if the database exists, exit if missing
         if database is None:
             raise NebulaError("required database missing, install database to proceed")
@@ -36,7 +43,7 @@ class cooling():
         logger.info("Initializing cooling calculation for %s", pion_ion)
         # Construct the filename for the ion cooling table based on the ion symbol
         ion_cooling_filename = chinati_ion + '.txt'
-        cooling_database = os.path.join(database, "Cooling", "Chianti")
+        cooling_database = os.path.join(database, "chianti_cooling_rates")
 
         # Full path to the cooling table
         self.ion_cooling_file = os.path.join(cooling_database, ion_cooling_filename)

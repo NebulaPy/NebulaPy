@@ -1,3 +1,10 @@
+"""Export detailed CHIANTI transitions for a selected ion.
+
+The script initialises NebulaPy with a dummy plasma state and writes a table
+of all wavelengths, Einstein A values, and lower/upper energy levels. Change
+``pion_ion`` and ``output_path`` before using it for another species.
+"""
+
 import NebulaPy.src as nebula
 import pandas
 import os

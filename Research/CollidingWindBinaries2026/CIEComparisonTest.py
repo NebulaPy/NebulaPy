@@ -1,4 +1,11 @@
 
+"""Compare NebulaPy and CHIANTI collisional-ionisation-equilibrium fractions.
+
+This validation script evaluates ion fractions over a 10^6–10^8 K
+temperature grid and plots the NebulaPy and CHIANTI results for visual
+comparison. Configure the element and output directory before running it.
+"""
+
 import numpy as np
 import os
 import matplotlib.pyplot as plt  # Plotting

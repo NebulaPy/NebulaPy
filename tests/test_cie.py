@@ -10,8 +10,8 @@ from NebulaPy.src.CIE import cieMode
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-CIE_DATABASE_DIRECTORY = PROJECT_ROOT / "NebulaPy-DB"
-CIE_DATA_FILE = CIE_DATABASE_DIRECTORY / "IonBalance" / "CIE.txt"
+CIE_DATABASE_DIRECTORY = PROJECT_ROOT / "nebulapy-db-1.0.0"
+CIE_DATA_FILE = CIE_DATABASE_DIRECTORY / "cie_ion_fractions.txt"
 CIE_ELEMENT_CHARGES = {"H": 1, "C": 6, "O": 8, "Fe": 26}
 CIE_REFERENCE_COLUMNS = {
     "H1+": "h_2",
@@ -45,7 +45,7 @@ def _read_reference_cie_table():
 def real_cie_database(monkeypatch):
     """Point CIE mode at the real repository database."""
     assert CIE_DATA_FILE.is_file()
-    monkeypatch.setenv("NEBULAPYDB", str(CIE_DATABASE_DIRECTORY))
+    monkeypatch.setenv("NEBULAPY_DB", str(CIE_DATABASE_DIRECTORY))
     return _read_reference_cie_table()
 
 

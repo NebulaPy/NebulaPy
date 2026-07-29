@@ -1,3 +1,9 @@
+"""PyNeb-backed recombination-line calculations for NebulaPy.
+
+The ``pyneb`` class translates PION species names into PyNeb atoms and
+provides access to supported recombination wavelengths and emissivities.
+The current implementation is focused on H I recombination lines.
+"""
 
 import pyneb as pn
 from pyneb import RecAtom

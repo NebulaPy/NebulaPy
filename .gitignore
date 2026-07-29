@@ -25,7 +25,11 @@ logs/
 *.log
 *.log.*
 tests/*.txt
-NebulaPy-DB/
+nebulapy-db-*/
+nebulapy-db-*.tar.xz
+nebulapy-db-*.tar.xz.sha256
+nebulapy-db-*.zip
+nebulapy-db-*.zip.sha256
 Research/*.txt
 Research/cmfgen_z086-wo-mdot50/
 Research/powr_mw-ob-i_mdot50/

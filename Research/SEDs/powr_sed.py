@@ -1,3 +1,10 @@
+"""Generate a PoWR SMC WNL-H20 atmosphere SED for use with PION.
+
+The model with log mass-loss rate -5.0 is rebinned into the configured
+radiation energy groups, exported in plot/PION formats, and printed from the
+NebulaPy SED container for inspection.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01], [1.126030e+01, 1.359840e+01],

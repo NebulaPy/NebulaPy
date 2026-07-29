@@ -1,3 +1,10 @@
+"""Compare ATLAS and blackbody SEDs using a detailed 28-bin energy grid.
+
+The script defines extra sampling across the ionising spectrum, generates
+solar-metallicity ATLAS atmospheres at three gravities and a blackbody
+reference, and exports the models for PION resolution tests.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01],
@@ -53,5 +60,4 @@ bb_sed = nebula.sed(
 )
 
 bb_sed.Blackbody()
-
 

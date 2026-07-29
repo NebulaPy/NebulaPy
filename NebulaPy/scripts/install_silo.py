@@ -1,3 +1,9 @@
+"""Run NebulaPy's bundled shell installer for the Silo dependency.
+
+The console entry point locates ``install_silo.sh`` beside this module,
+ensures it is executable, and launches it as a subprocess.
+"""
+
 import os
 import subprocess
 

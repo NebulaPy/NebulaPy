@@ -1,3 +1,10 @@
+"""Generate the WR 102 CMFGEN atmosphere SED used by the PION model.
+
+The script selects the Z=0.86 WO grid at log mass-loss rate -5.0, rebins the
+spectrum into the configured radiation groups, writes plot/PION products,
+and prints the resulting NebulaPy SED container.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [
@@ -15,7 +22,7 @@ plot_dir = '/home/tony/Desktop/NebulaPy/Research'
 pion_format = '/home/tony/Desktop/NebulaPy/Research'
 
 cmfgen_sed = nebula.sed(
-    database='/home/tony/Desktop/NebulaPy/NebulaPy-DB',
+    database='/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0',
     energy_bins=EnergyBins,
     progress=True,
     plot=plot_dir,

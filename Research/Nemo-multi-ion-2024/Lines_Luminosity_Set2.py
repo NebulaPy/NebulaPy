@@ -1,7 +1,15 @@
+"""Run the second non-equilibrium line-luminosity selection for the bow shock.
+
+This variant reads the simulation's advected ion fractions for a second set
+of diagnostic transitions, evaluates their CHIANTI emissivities, and
+integrates the emission over every selected PION snapshot.
+"""
+
 import NebulaPy.src as nebula
 from NebulaPy.tools import util
 from pypion.ReadData import ReadData
 import astropy.units as unit
+
 import numpy as np
 import time
 

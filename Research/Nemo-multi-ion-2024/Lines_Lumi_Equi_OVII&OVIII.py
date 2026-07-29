@@ -1,7 +1,15 @@
+"""Calculate equilibrium O VII and O VIII line luminosities from PION data.
+
+The script reads selected bow-shock Silo snapshots, derives equilibrium
+oxygen ion abundances from the local plasma state, evaluates chosen CHIANTI
+lines, and reports their volume-integrated luminosities.
+"""
+
 import NebulaPy.src as nebula
 from NebulaPy.tools import util
 from pypion.ReadData import ReadData
 import astropy.units as unit
+
 import numpy as np
 import time
 

@@ -1,3 +1,10 @@
+"""Calculate differential emission measures for a WR 140 simulation.
+
+The script reads selected PION/Silo snapshots, constructs temperature-binned
+emission measures for the colliding-wind plasma, and saves diagnostic plots
+and data products in the configured WR 140 output directory.
+"""
+
 import NebulaPy.src as nebula
 import time
 import matplotlib.pyplot as plt

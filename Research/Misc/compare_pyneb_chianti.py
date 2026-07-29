@@ -1,3 +1,10 @@
+"""Compare hydrogen Balmer-line emissivities from PyNeb and CHIANTI.
+
+At two representative temperatures and densities, the script evaluates
+H-alpha and H-beta as recombination lines with PyNeb and as collisionally
+excited lines with CHIANTI, then prints both sets of emissivities.
+"""
+
 import NebulaPy.src as nebula
 
 

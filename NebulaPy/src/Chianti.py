@@ -1,3 +1,10 @@
+"""CHIANTI-backed atomic emission and continuum calculations.
+
+This module translates PION ion names to CHIANTI species and exposes tools
+for line emissivities, transition metadata, ion fractions, free-free,
+free-bound, and two-photon emission at supplied plasma conditions.
+"""
+
 import os
 os.environ['XUVTOP']
 import io as _io

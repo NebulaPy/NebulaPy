@@ -1,7 +1,15 @@
+"""Calculate the luminosity of the O IV 25.9-micron diagnostic line.
+
+The script reads the bow-shock plasma and oxygen ion data from PION Silo
+files, evaluates the selected O IV CHIANTI transition, and volume-integrates
+its emissivity for each requested simulation snapshot.
+"""
+
 import NebulaPy.src as nebula
 from NebulaPy.tools import util
 from pypion.ReadData import ReadData
 import astropy.units as unit
+
 import numpy as np
 import time
 

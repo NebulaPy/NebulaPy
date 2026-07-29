@@ -1,3 +1,10 @@
+"""Build and inspect an X-ray emission-line catalogue for WR 140.
+
+This exploratory script combines PION emission measures, NebulaPy CIE data,
+and CHIANTI atomic data to identify useful line wavelengths and emissivities
+for the configured colliding-wind simulation and temperature range.
+"""
+
 #import numpy as np
 import NebulaPy.src as nebula
 import time

@@ -1,3 +1,10 @@
+"""Generate solar-metallicity ATLAS SEDs on the standard 15-bin grid.
+
+This energy-bin experiment produces Castelli–Kurucz atmosphere tables at
+log(g)=4.5, 4.0, and 3.5 and exports them in the PION format used to compare
+radiation-group resolutions.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01], [1.126030e+01, 1.359840e+01],
@@ -22,5 +29,4 @@ atlas_sed = nebula.sed(
 atlas_sed.CastelliKuruczAtlas(metallicity=0.0, gravity=4.5)
 atlas_sed.CastelliKuruczAtlas(metallicity=0.0, gravity=4.0)
 atlas_sed.CastelliKuruczAtlas(metallicity=0.0, gravity=3.5)
-
 

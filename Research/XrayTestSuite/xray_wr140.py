@@ -1,3 +1,10 @@
+"""Generate integrated X-ray spectra for the WR 140 colliding-wind model.
+
+The script reads selected WR 140 PION Silo snapshots, builds the emitting
+plasma and ion-density fields, calculates the configured X-ray processes,
+and saves spectra and plots in the chosen wavelength/energy representation.
+"""
+
 #import numpy as np
 import NebulaPy.src as nebula
 import time
@@ -188,7 +195,7 @@ def main():
         np.savetxt(
             txtfile,
             np.c_[wavelength, spectrum],
-            header="Wavelength[A] Spectrum[erg s^-1 A^-1]",
+            header="Wavelength[A] Spectrum[erg s^-1 sr^-1 A^-1]",
             fmt="%.8e"
         )
 
@@ -202,17 +209,17 @@ def main():
 
         if y_axis == "energy_per_wavelength":
             y_values = spectrum
-            ylabel = r"$L_\lambda$ [erg s$^{-1}$ $\AA^{-1}$]"
+            ylabel = r"$dL_\lambda/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
         elif y_axis == "energy_per_energy":
             y_values = spectrum * kev_angstrom / energy**2
-            ylabel = r"$L_E$ [erg s$^{-1}$ keV$^{-1}$]"
+            ylabel = r"$dL_E/d\Omega$ [erg s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
         elif y_axis == "photon_per_wavelength":
             y_values = spectrum / (energy * kev_to_erg)
-            ylabel = r"$N_\lambda$ [photons s$^{-1}$ $\AA^{-1}$]"
+            ylabel = r"$dN_\lambda/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ $\AA^{-1}$]"
         elif y_axis == "photon_per_energy":
             energy_luminosity = spectrum * kev_angstrom / energy**2
             y_values = energy_luminosity / (energy * kev_to_erg)
-            ylabel = r"$N_E$ [photons s$^{-1}$ keV$^{-1}$]"
+            ylabel = r"$dN_E/d\Omega$ [photons s$^{-1}$ sr$^{-1}$ keV$^{-1}$]"
         else:
             raise ValueError(
                 "y_axis must be 'energy_per_wavelength', "

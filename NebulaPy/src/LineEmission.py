@@ -1,3 +1,10 @@
+"""Calculate spectral-line emissivities, maps, and integrated luminosities.
+
+The ``line_emission`` interface validates requested CHIANTI or PyNeb lines
+and evaluates them for 1D or nested-grid simulation data, including
+multiprocessing helpers for large two-dimensional PION datasets.
+"""
+
 from .Chianti import chianti
 import numpy as np
 import copy

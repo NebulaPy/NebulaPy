@@ -1,3 +1,10 @@
+"""Generate a PoWR OB-supergiant SED for the BD+60°2522 study.
+
+The script loads the Milky Way ``OB-I`` atmosphere with log mass-loss rate
+-5.0, rebins it into the configured PION energy groups, writes plot/PION
+outputs, and prints the resulting NebulaPy SED container.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01], [1.126030e+01, 1.359840e+01],
@@ -13,7 +20,7 @@ plot_dir = '/home/tony/Desktop/NebulaPy/Research'
 pion_format = '/home/tony/Desktop/NebulaPy/Research'
 
 powr_sed = nebula.sed(
-    database='/home/tony/Desktop/NebulaPy/NebulaPy-DB',
+    database='/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0',
     energy_bins=EnergyBins,
     progress=True,
     plot=plot_dir,

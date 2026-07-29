@@ -1,7 +1,15 @@
+"""Calculate non-equilibrium spectral-line luminosities for selected ions.
+
+This research workflow reads ion fractions, densities, temperatures, and
+cell volumes from PION Silo snapshots, evaluates configured CHIANTI lines,
+and integrates their emissivities over the simulation volume.
+"""
+
 import NebulaPy.src as nebula
 from NebulaPy.tools import util
 from pypion.ReadData import ReadData
 import astropy.units as unit
+
 import numpy as np
 import time
 

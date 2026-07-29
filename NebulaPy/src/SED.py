@@ -1,3 +1,10 @@
+"""Build PION-ready stellar and blackbody spectral-energy distributions.
+
+The ``sed`` class rebins Castelli–Kurucz ATLAS, PoWR, CMFGEN, or blackbody
+spectra into user-supplied energy groups and can export diagnostic plots and
+PION-formatted radiation tables.
+"""
+
 import os
 import glob
 import re
@@ -30,7 +37,7 @@ class sed:
     def __init__(self, energy_bins, plot=None, pion=None, progress=False):
 
         # get database
-        database = os.environ.get("NEBULAPYDB")
+        database = os.environ.get("NEBULAPY_DB")
         # Check if the database exists, exit if missing
         if database is None:
             raise NebulaError("required database missing, install database to proceed")
@@ -41,9 +48,9 @@ class sed:
         self.progress = progress
         self.container = {'energy_bins': self.EnergyBins,
                           'plot': self.Plot, 'pion': self.Pion}
-        self.AtlasDatabase = os.path.join(database, "SED", "Atlas")
-        self.PoWRDatabase = os.path.join(database, "SED", "PoWR")
-        self.CMFGENDatabase = os.path.join(database, "SED", "CMFGEN")
+        self.AtlasDatabase = os.path.join(database, "sed", "atlas")
+        self.PoWRDatabase = os.path.join(database, "sed", "powr")
+        self.CMFGENDatabase = os.path.join(database, "sed", "cmfgen")
         self.setup_lambda_bin()
 
     ##############################################################################
@@ -362,7 +369,10 @@ class sed:
 
                 # calculating the normalization factor, perform integration across
                 # the entire wavelength domain to obtain the total flux.
-                total_flux = np.trapz(np.asarray(model_flux), np.asarray(model_lambda))
+                total_flux = np.trapezoid(
+                    np.asarray(model_flux),
+                    np.asarray(model_lambda),
+                )
                 # Append the total Flux into TotalFlux_BundledGrids
                 total_flux_set.append(total_flux)
 
@@ -373,8 +383,12 @@ class sed:
                 # interval
                 flux_bin = []
                 for i in range(len(binned_lambda)):
-                    flux_bin.append(np.trapz(np.asarray(binned_flux[i]),
-                                             np.asarray(binned_lambda[i])))
+                    flux_bin.append(
+                        np.trapezoid(
+                            np.asarray(binned_flux[i]),
+                            np.asarray(binned_lambda[i]),
+                        )
+                    )
 
                 # reverse the order of the flux bins since we are interested in
                 # obtaining flux in energy bins.
@@ -503,7 +517,10 @@ class sed:
 
                 # Perform integration across the entire wavelength domain to obtain the
                 # total flux.
-                total_flux_10pc = np.trapz(np.asarray(model_flux), np.asarray(model_lambda))
+                total_flux_10pc = np.trapezoid(
+                    np.asarray(model_flux),
+                    np.asarray(model_lambda),
+                )
                 # However this is the total flux at 10 pc. The total flux at the stellar
                 # surface is
                 total_flux_Rstar = (
@@ -527,8 +544,12 @@ class sed:
                 # interval
                 flux_bin = []
                 for i in range(len(binned_lambda)):
-                    flux_bin.append(np.trapz(np.asarray(binned_flux[i]),
-                                             np.asarray(binned_lambda[i])))
+                    flux_bin.append(
+                        np.trapezoid(
+                            np.asarray(binned_flux[i]),
+                            np.asarray(binned_lambda[i]),
+                        )
+                    )
 
                 # reverse the order of the flux bins since we are interested in
                 # obtaining flux in energy bins.
@@ -932,7 +953,10 @@ class sed:
 
                 # Perform integration across the entire wavelength domain to obtain the
                 # total flux.
-                total_flux_1kpc = np.trapz(np.asarray(model_flux), np.asarray(model_lambda))
+                total_flux_1kpc = np.trapezoid(
+                    np.asarray(model_flux),
+                    np.asarray(model_lambda),
+                )
                 # However this is the total flux at 1 kpc. The total flux at the stellar
                 # surface is
                 total_flux_Rstar = total_flux_1kpc * const.CMFGEN_FLUX_DISTANCE_PC**2 / (
@@ -948,8 +972,12 @@ class sed:
                 # interval
                 flux_bin = []
                 for i in range(len(binned_lambda)):
-                    flux_bin.append(np.trapz(np.asarray(binned_flux[i]),
-                                             np.asarray(binned_lambda[i])))
+                    flux_bin.append(
+                        np.trapezoid(
+                            np.asarray(binned_flux[i]),
+                            np.asarray(binned_lambda[i]),
+                        )
+                    )
 
                 # reverse the order of the flux bins since we are interested in
                 # obtaining flux in energy bins.

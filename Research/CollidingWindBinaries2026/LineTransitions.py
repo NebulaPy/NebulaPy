@@ -1,3 +1,10 @@
+"""Export CHIANTI transition metadata for a selected ion.
+
+Using a dummy plasma state to initialise NebulaPy's CHIANTI interface, the
+script writes each available wavelength, Einstein A value, and lower/upper
+level description to a readable text table in the configured output folder.
+"""
+
 import NebulaPy.src as nebula
 import pandas
 import os

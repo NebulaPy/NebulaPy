@@ -1,3 +1,10 @@
+"""Synthesize continuum and line spectra from NebulaPy plasma data.
+
+The spectrum workflow combines CHIANTI emission processes across ions and
+grid cells, supports multiprocessing for nested simulation grids, and
+returns wavelength-resolved spectral power per unit solid angle.
+"""
+
 from .Chianti import chianti
 from NebulaPy.src.Utils import getPionSymbol, get_element_symbol
 import NebulaPy.src.Chianti as nebula_chianti
@@ -85,8 +92,8 @@ class spectrum:
     -----
     The lowercase class name is retained for compatibility with the public API.
     Wavelengths are measured in Angstrom and photon energies in keV.  The final
-    ``Spectrum`` attribute contains luminosity per wavelength after integration
-    over the full ``4*pi`` solid angle.
+    ``Spectrum`` contains spectral power per wavelength and per steradian:
+    ``erg s^-1 sr^-1 Angstrom^-1``. It is not integrated over solid angle.
     """
 
     ######################################################################################
@@ -898,8 +905,9 @@ class spectrum:
         Side Effects
         ------------
         Builds ``self.WavelengthGrid`` and stores the final one-dimensional
-        luminosity-per-wavelength array in ``self.Spectrum``.  Individual ion
-        spectra are local intermediates and are summed before this method ends.
+        spectral-power array per wavelength and per steradian in
+        ``self.Spectrum``. Individual ion spectra are local intermediates and
+        are summed before this method ends.
         """
 
         ##########################################################################
@@ -1083,6 +1091,7 @@ class spectrum:
                 dtype=np.float64,
             )
 
-        # Coefficients are per steradian; 4*pi integrates isotropic emission over
-        # the full solid angle and produces total luminosity per wavelength.
-        self.Spectrum = 4.0 * const.PI * integrated_spectrum
+        # CHIANTI coefficients are per steradian, so retain that normalization.
+        # Callers that need angle-integrated isotropic luminosity can multiply
+        # the returned spectrum by 4*pi explicitly.
+        self.Spectrum = integrated_spectrum

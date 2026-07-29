@@ -1,7 +1,15 @@
+"""Calculate equilibrium spectral-line luminosities for selected ions.
+
+The script derives CIE ion fractions from each cell's temperature, combines
+them with PION density and volume data, evaluates configured CHIANTI line
+emissivities, and prints the integrated luminosity of each line.
+"""
+
 import NebulaPy.src as nebula
 from NebulaPy.tools import util
 from pypion.ReadData import ReadData
 import astropy.units as unit
+
 import numpy as np
 import time
 

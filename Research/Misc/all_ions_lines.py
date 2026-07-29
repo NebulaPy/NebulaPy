@@ -1,3 +1,10 @@
+"""Export every CHIANTI wavelength available for a selected ion.
+
+The ion is initialised through NebulaPy at a dummy temperature and density,
+then its complete wavelength list is written as a vertical text catalogue.
+Change ``pion_ion`` and ``output_path`` to inspect another ion.
+"""
+
 import NebulaPy.src as nebula
 import pandas
 import os

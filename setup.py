@@ -1,3 +1,10 @@
+"""Package and install NebulaPy with its console commands.
+
+This setuptools configuration reads the project version and requirements,
+includes the Silo installer, and registers NebulaPy's command-line entry
+points.
+"""
+
 from setuptools import setup, find_packages
 import os
 import re
@@ -35,8 +42,7 @@ setup(
     install_requires=read_requirements(),
     include_package_data=True,
     package_data={
-        'NebulaPy': ['data/PoWR.tar.xz', 'data/CMFGEN.tar.xz',
-                     'data/Chianti.tar.xz', 'scripts/install_silo.sh'],
+        'NebulaPy': ['scripts/install_silo.sh'],
     },
 
     classifiers=[
@@ -51,9 +57,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'download-database=NebulaPy.src.Database:DownloadDatabase.run',
             'install-silo=NebulaPy.scripts.install_silo:main',
         ],
     },
 )
-

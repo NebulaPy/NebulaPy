@@ -1,3 +1,10 @@
+"""Generate O-star ATLAS spectral-energy distributions for the bow-shock run.
+
+The script uses the simulation's radiation energy bins to create
+Castelli–Kurucz atmosphere tables and PION-formatted SED files in the
+configured OStar-Atlas-SED output directory.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01], [1.126030e+01, 1.359840e+01],

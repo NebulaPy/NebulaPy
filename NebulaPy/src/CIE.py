@@ -16,13 +16,13 @@ class cieMode:
     """Read and interpolate the NebulaPy CIE ion-balance table."""
 
     def __init__(self):
-        database = os.environ.get("NEBULAPYDB")
+        database = os.environ.get("NEBULAPY_DB")
         if not database:
             message = "required database dir missing, install database to proceed"
             logger.error("Cannot initialize CIE mode: %s", message)
             raise NebulaError(message)
 
-        self.cie_file = os.path.join(database, "IonBalance", "CIE.txt")
+        self.cie_file = os.path.join(database, "cie_ion_fractions.txt")
         self.data = None
         self.col_index = None
         self.AllSpecies = None

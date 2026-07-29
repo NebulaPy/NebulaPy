@@ -1,3 +1,10 @@
+"""Split dominant WR 140 emission lines into soft- and hard-X-ray bands.
+
+The script parses a DominantLines text report by simulation step, converts
+line wavelengths to keV, classifies lines into 0.3–2 and 2–10 keV bands, and
+writes a summary table with supporting plots.
+"""
+
 import os
 import re
 import pandas as pd

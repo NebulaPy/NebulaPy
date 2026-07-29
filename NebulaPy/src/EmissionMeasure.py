@@ -1,3 +1,10 @@
+"""Calculate temperature-binned differential emission measures.
+
+The ``emissionMeasure`` class creates logarithmic temperature bins, maps
+simulation cells into those bins, and accumulates total or species-weighted
+emission measures from density and cell-volume fields.
+"""
+
 import numpy as np
 from astropy import units as u
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger

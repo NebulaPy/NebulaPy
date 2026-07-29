@@ -1,3 +1,10 @@
+"""Compare ATLAS and blackbody SEDs using a high-resolution 64-bin grid.
+
+After four low-energy groups, the script creates one-eV-wide bins up to
+76 eV, generates three solar-metallicity ATLAS gravities and a blackbody
+reference, and exports the spectra for PION bin-resolution tests.
+"""
+
 import NebulaPy.src as nebula
 
 EnergyBins = [[7.902470e+00, 1.126030e+01],
@@ -30,5 +37,4 @@ bb_sed = nebula.sed(
 )
 
 bb_sed.Blackbody()
-
 
