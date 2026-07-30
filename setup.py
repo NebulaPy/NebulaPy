@@ -43,6 +43,7 @@ setup(
     include_package_data=True,
     package_data={
         'NebulaPy': ['scripts/install_silo.sh'],
+        'NebulaPy.database': ['manifests/*.json'],
     },
 
     classifiers=[
@@ -58,6 +59,7 @@ setup(
     entry_points={
         'console_scripts': [
             'install-silo=NebulaPy.scripts.install_silo:main',
+            'nebulapy=NebulaPy.cli.main:main',
         ],
     },
 )

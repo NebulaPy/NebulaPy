@@ -215,33 +215,121 @@ export XUVTOP="/path/to/chianti/database"
 
 #### 2. Install the NebulaPy database
 
-The destination argument is the parent directory in which
-`nebulapy-db-1.0.0` will be
-created:
+Install the complete NebulaPy database with the command-line interface:
 
 ```bash
-download-database "$HOME"
-export NEBULAPY_DB="/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0"
+nebulapy database install --destination "$HOME/.nebulapy"
 ```
 
-Persist both variables in the appropriate shell configuration:
+The destination is the parent directory. The command above therefore creates:
+
+```text
+$HOME/.nebulapy/nebulapy-db-1.0.0
+```
+
+The installer downloads the Zenodo, ATLAS, and PoWR components, retains valid
+existing files, and verifies the completed installation against the
+authoritative Database 1.0.0 manifest.
+
+If `--destination` is omitted, the installer uses `NEBULAPY_DB` when it is
+already set; otherwise it installs into
+`$HOME/.nebulapy/nebulapy-db-1.0.0`.
+
+Display the complete command-line help with:
+
+```bash
+nebulapy database install --help
+```
+
+| Option | Description |
+|---|---|
+| `--destination PATH` | Parent directory in which the versioned database directory is created. |
+| `--component {core,atlas,powr} [...]` | Install one or more components. The default is all three. |
+| `--atlas-grid GRID` | Install one ATLAS grid. Repeat the option to select multiple grids. |
+| `--powr-grid GRID` | Install one supported official PoWR grid, such as `OB-I`, `wc`, or `LMC-OB-I`. Repeat for multiple grids. |
+| `--force` | Download the selected components again, including valid existing files. |
+| `--dry-run` | Report installed and missing components without downloading files. |
+| `--workers NUMBER` | Set the number of simultaneous downloads. The default is `8`. |
+| `--delay SECONDS` | Wait after each download. The default is `0`. |
+| `--timeout SECONDS` | Set the request timeout. The default is `60`. |
+| `--retries NUMBER` | Set the number of retries after a failed request. The default is `3`. |
+| `-h`, `--help` | Display the installer help. |
+
+The supported ATLAS grids are:
+
+```text
+ckm05  ckm10  ckm15  ckm20  ckm25  ckp00  ckp02  ckp05
+```
+
+The supported PoWR grid identifiers are:
+
+```text
+OB-I                 wc                    wne
+wnl                  wnl-h50               LMC-OB-I
+lmc-wc               lmc-wne               lmc-wnl-h20
+lmc-wnl-h40          SMC-OB-I              SMC-OB-II
+SMC-OB-III           SMC-OB-Vd3            smc-wc-2021
+smc-wne              smc-wnl-h20           smc-wnl-h40
+smc-wnl-h60          007-wc-2021           007-wne-2015
+007-wnl-h20-2015     007-wnl-h40-2015      007-wnl-h60-2015
+```
+
+Examples:
+
+```bash
+# Install only the Zenodo files
+nebulapy database install \
+  --destination "$HOME/.nebulapy" \
+  --component core
+
+# Install two ATLAS grids
+nebulapy database install \
+  --destination "$HOME/.nebulapy" \
+  --component atlas \
+  --atlas-grid ckp00 \
+  --atlas-grid ckp05
+
+# Install one PoWR grid
+nebulapy database install \
+  --destination "$HOME/.nebulapy" \
+  --component powr \
+  --powr-grid OB-I
+
+# Inspect the installation without downloading
+nebulapy database install \
+  --destination "$HOME/.nebulapy" \
+  --dry-run
+
+# Refresh all database components
+nebulapy database install \
+  --destination "$HOME/.nebulapy" \
+  --force
+```
+
+Set `NEBULAPY_DB` to the versioned database directory:
+
+```bash
+export NEBULAPY_DB="$HOME/.nebulapy/nebulapy-db-1.0.0"
+```
+
+Persist `XUVTOP` and `NEBULAPY_DB` in the appropriate shell configuration:
 
 ```bash
 # Linux
 echo 'export XUVTOP="/path/to/chianti/database"' >> "$HOME/.bashrc"
-echo 'export NEBULAPY_DB="/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0"' >> "$HOME/.bashrc"
+echo 'export NEBULAPY_DB="$HOME/.nebulapy/nebulapy-db-1.0.0"' >> "$HOME/.bashrc"
 source "$HOME/.bashrc"
 
 # macOS
 echo 'export XUVTOP="/path/to/chianti/database"' >> "$HOME/.zshrc"
-echo 'export NEBULAPY_DB="/Users/tony/Desktop/NebulaPy/nebulapy-db-1.0.0"' >> "$HOME/.zshrc"
+echo 'export NEBULAPY_DB="$HOME/.nebulapy/nebulapy-db-1.0.0"' >> "$HOME/.zshrc"
 source "$HOME/.zshrc"
 ```
 
 Run the final environment check:
 
 ```bash
-python -c "import os, Silo; import NebulaPy.src; print('XUVTOP:', os.environ['XUVTOP']); print('NEBULAPY_DB:', os.environ['NEBULAPY_DB']); print('Silo:', Silo.__file__)"
+python3 -c "import os, Silo, NebulaPy.src; print('XUVTOP:', os.environ['XUVTOP']); print('NEBULAPY_DB:', os.environ['NEBULAPY_DB']); print('Silo:', Silo.__file__)"
 ```
 
 ### Common installation errors
