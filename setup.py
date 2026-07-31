@@ -35,8 +35,8 @@ setup(
     install_requires=read_requirements(),
     include_package_data=True,
     package_data={
-        'NebulaPy': ['data/PoWR.tar.xz', 'data/CMFGEN.tar.xz',
-                     'data/Chianti.tar.xz', 'scripts/install_silo.sh'],
+        'NebulaPy': ['scripts/install_silo.sh'],
+        'NebulaPy.database.manifests': ['*.json'],
     },
 
     classifiers=[
@@ -51,9 +51,8 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'download-database=NebulaPy.src.Database:DownloadDatabase.run',
             'install-silo=NebulaPy.scripts.install_silo:main',
+            'nebulapy=NebulaPy.cli.main:main',
         ],
     },
 )
-

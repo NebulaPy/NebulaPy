@@ -29,10 +29,13 @@ class sed:
     def __init__(self, energy_bins, plot=None, pion=None, verbose=False):
 
         # get database
-        database = os.environ.get("NEBULAPYDB")
+        database = os.environ.get("NEBULAPY_DB")
         # Check if the database exists, exit if missing
         if database is None:
-            util.nebula_exit_with_error("required database missing, install database to proceed")
+            util.nebula_exit_with_error(
+                "required database missing; run 'nebulapy database install' "
+                "and set NEBULAPY_DB"
+            )
 
         self.EnergyBins = energy_bins
         self.Plot = plot
@@ -40,9 +43,9 @@ class sed:
         self.Verbose = verbose
         self.container = {'energy_bins': self.EnergyBins,
                           'plot': self.Plot, 'pion': self.Pion}
-        self.AtlasDatabase = os.path.join(database, "SED", "Atlas")
-        self.PoWRDatabase = os.path.join(database, "SED", "PoWR")
-        self.CMFGENDatabase = os.path.join(database, "SED", "CMFGEN")
+        self.AtlasDatabase = os.path.join(database, "sed", "atlas")
+        self.PoWRDatabase = os.path.join(database, "sed", "powr")
+        self.CMFGENDatabase = os.path.join(database, "sed", "cmfgen")
         self.setup_lambda_bin()
 
     ##############################################################################
@@ -359,7 +362,7 @@ class sed:
 
                 # calculating the normalization factor, perform integration across
                 # the entire wavelength domain to obtain the total flux.
-                total_flux = np.trapz(np.asarray(model_flux), np.asarray(model_lambda))
+                total_flux = np.trapezoid(np.asarray(model_flux), np.asarray(model_lambda))
                 # Append the total Flux into TotalFlux_BundledGrids
                 total_flux_set.append(total_flux)
 
@@ -370,7 +373,7 @@ class sed:
                 # interval
                 flux_bin = []
                 for i in range(len(binned_lambda)):
-                    flux_bin.append(np.trapz(np.asarray(binned_flux[i]),
+                    flux_bin.append(np.trapezoid(np.asarray(binned_flux[i]),
                                              np.asarray(binned_lambda[i])))
 
                 # reverse the order of the flux bins since we are interested in
@@ -500,7 +503,7 @@ class sed:
 
                 # Perform integration across the entire wavelength domain to obtain the
                 # total flux.
-                total_flux_10pc = np.trapz(np.asarray(model_flux), np.asarray(model_lambda))
+                total_flux_10pc = np.trapezoid(np.asarray(model_flux), np.asarray(model_lambda))
                 # However this is the total flux at 10 pc. The total flux at the stellar
                 # surface is
                 total_flux_Rstar = total_flux_10pc * 10 ** 2.0 / (self.R_star[model_index] * const.radiusSun / const.parsec) ** 2.0
@@ -516,7 +519,7 @@ class sed:
                 # interval
                 flux_bin = []
                 for i in range(len(binned_lambda)):
-                    flux_bin.append(np.trapz(np.asarray(binned_flux[i]),
+                    flux_bin.append(np.trapezoid(np.asarray(binned_flux[i]),
                                              np.asarray(binned_lambda[i])))
 
                 # reverse the order of the flux bins since we are interested in
@@ -742,12 +745,17 @@ class sed:
     # bundle up CMFGEN models
     ######################################################################################
     def bundle_up_cmfgen_models(self, metallicity, composition, mdot):
+        if not os.path.isdir(self.CMFGENDatabase):
+            util.nebula_exit_with_error(
+                "CMFGEN data are not included in the NebulaPy database; "
+                f"expected separately supplied models in {self.CMFGENDatabase}"
+            )
 
         # generating model grid name
         grid_name = metallicity.lower().replace(".", "") + '-' + composition.lower()
         self.grid_name = grid_name
         # Construct path to the grid directory
-        grid_dir = self.CMFGENDatabase + grid_name + '-sed'
+        grid_dir = os.path.join(self.CMFGENDatabase, grid_name + '-sed')
         # get model parameter file
         modelparameters_file = os.path.join(grid_dir, 'modelparameters.txt')
 
@@ -911,7 +919,7 @@ class sed:
 
                 # Perform integration across the entire wavelength domain to obtain the
                 # total flux.
-                total_flux_1kpc = np.trapz(np.asarray(model_flux), np.asarray(model_lambda))
+                total_flux_1kpc = np.trapezoid(np.asarray(model_flux), np.asarray(model_lambda))
                 # However this is the total flux at 1 kpc. The total flux at the stellar
                 # surface is
                 total_flux_Rstar = total_flux_1kpc * 1000 ** 2.0 / (
@@ -927,7 +935,7 @@ class sed:
                 # interval
                 flux_bin = []
                 for i in range(len(binned_lambda)):
-                    flux_bin.append(np.trapz(np.asarray(binned_flux[i]),
+                    flux_bin.append(np.trapezoid(np.asarray(binned_flux[i]),
                                              np.asarray(binned_lambda[i])))
 
                 # reverse the order of the flux bins since we are interested in
@@ -969,7 +977,4 @@ class sed:
 
 
     ################################################################################
-
-
-
 

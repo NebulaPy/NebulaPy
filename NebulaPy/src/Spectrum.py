@@ -9,7 +9,6 @@ import queue
 import numpy as np
 from tqdm import tqdm
 
-#from .CIE import cieMode
 import ChiantiPy.tools.filters as chfilters
 
 ##############################################################################
@@ -60,7 +59,6 @@ class spectrum:
             doLine=False,
             doTwophoton=False,
             elements=None,
-            CIE=False,
             filtername=None,
             filterfactor=None,
             allLines=True,
@@ -131,14 +129,6 @@ class spectrum:
         print(
             f" [ MULTIPROCESSING ]: Using {self.proc}/{mp.cpu_count()} available CPU cores"
         )
-
-        '''
-        self.CIE = CIE
-        self.NEQ = not CIE
-        if CIE:
-            cie = cieMode(verbose=True)
-            cie.load_cie()
-        '''
 
     ######################################################################################
     # Build Species Attributes
@@ -554,18 +544,6 @@ class spectrum:
                     f"shapes for species {species}."
                 )
 
-        '''
-        if self.NEQ:
-            utils.nebula_warning(
-                "NEI mode is not implemented yet; using CIE instead."
-            )
-
-        elif self.CIE:
-            utils.nebula_warning(
-                "Using collisional ionization equilibrium (CIE)."
-            )
-        '''
-
         ##########################################################################
         # Setting Up wavelength grid
         self.setup_wavelength_grid(self.min_wvl, self.max_wvl,
@@ -715,5 +693,3 @@ class spectrum:
         )
 
         self.Spectrum = integrated_spectrum
-
-

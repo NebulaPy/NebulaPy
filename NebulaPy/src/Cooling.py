@@ -24,10 +24,13 @@ class cooling():
         self.ion = pion_ion
 
         # get database
-        database = os.environ.get("NEBULAPYDB")
+        database = os.environ.get("NEBULAPY_DB")
         # Check if the database exists, exit if missing
         if database is None:
-            util.nebula_exit_with_error("required database missing, install database to proceed")
+            util.nebula_exit_with_error(
+                "required database missing; run 'nebulapy database install' "
+                "and set NEBULAPY_DB"
+            )
 
         # Get the corresponding CHIANTI ion symbol for the given pion_ion
         chinati_ion = self.get_chianti_symbol(pion_ion)
@@ -36,7 +39,7 @@ class cooling():
             print(f" initializing cooling class")
         # Construct the filename for the ion cooling table based on the ion symbol
         ion_cooling_filename = chinati_ion + '.txt'
-        cooling_database = os.path.join(database, "Cooling", "Chianti")
+        cooling_database = os.path.join(database, "chianti_cooling_rates")
 
         # Full path to the cooling table
         self.ion_cooling_file = os.path.join(cooling_database, ion_cooling_filename)
@@ -90,8 +93,30 @@ class cooling():
         # Convert the cooling data to linear scale (from log(10) scale)
         ion_cooling_data = np.power(10, ion_cooling_log_data)
 
-        # Create an interpolation function for cooling rate as a function of electron density and temperature
-        self.cooling_rate = interpolate.interp2d(nemo_ne, nemo_temperature, ion_cooling_data, kind='linear')
+        # Interpolate on the regular (temperature, electron-density) grid.
+        # scipy.interpolate.interp2d was removed in SciPy 1.14, so retain the
+        # historical cooling_rate(ne, temperature) calling convention with a
+        # small wrapper around RegularGridInterpolator.
+        interpolator = interpolate.RegularGridInterpolator(
+            (nemo_temperature, nemo_ne),
+            ion_cooling_data,
+            method='linear',
+            bounds_error=False,
+            fill_value=None,
+        )
+
+        def cooling_rate(electron_density, temperature):
+            electron_density, temperature = np.broadcast_arrays(
+                np.asarray(electron_density, dtype=float),
+                np.asarray(temperature, dtype=float),
+            )
+            points = np.column_stack(
+                (temperature.ravel(), electron_density.ravel())
+            )
+            values = interpolator(points).reshape(temperature.shape)
+            return values.item() if values.ndim == 0 else values
+
+        self.cooling_rate = cooling_rate
 
     ######################################################################################
     # generate species chianti symbol

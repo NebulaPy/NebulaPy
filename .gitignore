@@ -11,3 +11,11 @@ silo-4.11.1-bsd-smalltest.tar.xz
 silo-4.11.1-bsd-smalltest/
 silo-4.11.1-bsd/**
 *.log
+.DS_Store
+__pycache__/
+*.py[cod]
+nebulapy-db-*/
+nebulapy-db-*.tar.xz
+nebulapy-db-*.tar.xz.sha256
+nebulapy-db-*.zip
+nebulapy-db-*.zip.sha256

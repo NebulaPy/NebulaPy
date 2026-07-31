@@ -8,8 +8,9 @@ NebulaPy is a Python library for post-processing [PION](https://www.pion.ie/) si
 
 ## Features
 
-- **Spectral Energy Distribution (SED) Binning**: Energy binning of stellar atmosphere models, including ATLAS, Potsdam, and 
-CMFGEN, and Blackbody across a wide range of metal abundances.
+- **Spectral Energy Distribution (SED) Binning**: Energy binning of ATLAS and
+  Potsdam stellar-atmosphere models, and blackbodies, across a wide range of
+  metal abundances.
 - **Line Luminosity Calculations**:
   - Computes line luminosities for spherical geometry (1D nested and uniform grid).
   - Computes line luminosities for cylindrical geometry (2D nested and uniform grid).
@@ -50,17 +51,12 @@ install-silo
 #   ${HOME}/.local/venv/lib/python3.11/site-packages/pypion/SiloHeader_data.py
 # Modify line 18 to append /lib to the path
 
-# To download the NebulaPy database:
-# Execute the following command from the NebulaPy root directory.
-# If a destination path is not specified, the download will default to the
-# root directory. This requires approximately 270 MB of additional space.
-download-database [destination_path]
+# Install the NebulaPy database
+nebulapy database install --destination "$HOME/.nebulapy"
 
-# Add environmental variable for NebulaPy Database
-echo "export NEBULAPYDB=NEBULAPY-DATABASE-DIRECTORY" >> ~/.bashrc
-
-# Reload your .bashrc
-source ~/.bashrc
+# Configure the database path
+echo 'export NEBULAPY_DB="$HOME/.nebulapy/nebulapy-db-1.0.0"' >> "$HOME/.bashrc"
+source "$HOME/.bashrc"
 ```
 
 ## Usage
@@ -68,7 +64,7 @@ source ~/.bashrc
 For detailed usage instructions, examples, and features, please 
 visit [NebulaPy Wiki](https://github.com/arunmathewofficial/NebulaPy/wiki). 
 Sample scripts demonstrating NebulaPy functionalities can be found
-in the `NebulaPy/problems` directory.
+in the `NebulaPy/Research` directory.
 
 
 ## Documentation
@@ -92,4 +88,3 @@ Arun Mathew
 Astronomy & Astrophysics  
 Computational and High Energy Astrophysics  
 Dublin Institute for Advanced Studies (DIAS), Ireland  
-
