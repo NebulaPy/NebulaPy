@@ -2,3 +2,4 @@ recursive-include NebulaPy *.py
 recursive-include NebulaPy/database/manifests *.json
 include README.md
 include LICENSE
+include requirements.txt

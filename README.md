@@ -83,6 +83,17 @@ For bug reports and feature requests, visit the
 - **Version 1.0.2-beta** – March 6, 2025: Include silo installation script
 - **Version 1.0.3-beta** – March 6, 2025: Fixed bugs in spectral line emissivity map script
 
+## Licence
+
+NebulaPy source code is licensed under the MIT License.
+
+NebulaPy-authored database tables are licensed separately under the
+Creative Commons Attribution 4.0 International (CC BY 4.0) License.
+
+Third-party datasets, including ATLAS and PoWR stellar-atmosphere data,
+are not covered by either licence and remain subject to the terms of
+their respective providers.
+
 ## Author
 Arun Mathew  
 Astronomy & Astrophysics  
