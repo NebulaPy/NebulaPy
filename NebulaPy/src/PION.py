@@ -119,8 +119,9 @@ class pion():
 
         Parameters
         ----------
-        silo_instant
-        scale
+        scale : {'cm', 'pc', 'au'}, optional
+            Unit for geometry edges: centimetres (default), parsecs, or
+            astronomical units. Spherical radii and shell volumes remain in CGS.
 
         Returns
         -------
@@ -145,6 +146,108 @@ class pion():
         elif coord_sys == 1:
             logger.info("Loading geometry: %s coordinates", const.COORDINATE_SYSTEMS[coord_sys])
             raise NebulaError(f"{const.COORDINATE_SYSTEMS[coord_sys]} coordinates not defined, todo list")
+
+    ######################################################################################
+    # Apply grid mask filters
+    ######################################################################################
+    def apply_grid_filters(
+            self,
+            silo_instant,
+            *,
+            temperature=None,
+            min_temperature=None,
+            max_temperature=None,
+    ):
+        """Return a fresh snapshot grid mask with optional filters applied.
+
+        Temperature limits are inclusive and may be supplied independently. If
+        neither limit is supplied, the original ``NG_Mask`` for the requested
+        snapshot is returned unchanged. The stored geometry mask is not modified.
+
+        Parameters
+        ----------
+        silo_instant : str
+            Path to the PION Silo snapshot whose grid mask is required.
+        temperature : array-like, optional
+            Snapshot temperature grid. Required when either temperature limit is
+            supplied and must have the same shape as ``NG_Mask``.
+        min_temperature, max_temperature : float, optional
+            Inclusive lower and upper temperature limits in K.
+
+        Returns
+        -------
+        numpy.ndarray
+            A new grid mask containing the original mask values for selected
+            cells and zero for cells rejected by a filter.
+        """
+
+        temperature_filter = (
+            min_temperature is not None
+            or max_temperature is not None
+        )
+
+        if temperature_filter and temperature is None:
+            raise NebulaError(
+                "temperature is required when a temperature limit is supplied."
+            )
+
+        if (
+                min_temperature is not None
+                and max_temperature is not None
+                and min_temperature > max_temperature
+        ):
+            raise NebulaError(
+                "Minimum temperature cannot exceed maximum temperature."
+            )
+
+        header_data = OpenData(silo_instant)
+        try:
+            header_data.db.SetDir('/header')
+            coord_sys = int(header_data.db.GetVar("coord_sys"))
+        finally:
+            header_data.close()
+
+        readers = {
+            1: 'get_3Darray',
+            2: 'get_2Darray',
+            3: 'get_1Darray',
+        }
+        reader_name = readers.get(coord_sys)
+        if reader_name is None:
+            raise NebulaError(
+                f"Unsupported coordinate-system identifier: {coord_sys}"
+            )
+
+        dataio = ReadData(silo_instant)
+        try:
+            reader = getattr(dataio, reader_name)
+            grid_mask = np.array(
+                reader('NG_Mask')['data'],
+                copy=True,
+            )
+        finally:
+            dataio.close()
+
+        if not temperature_filter:
+            return grid_mask
+
+        temperature = np.asarray(temperature, dtype=np.float64)
+        if temperature.shape != grid_mask.shape:
+            raise NebulaError(
+                "temperature and grid mask must have identical shapes: "
+                f"{temperature.shape} != {grid_mask.shape}."
+            )
+
+        selected = np.ones(temperature.shape, dtype=bool)
+
+        if min_temperature is not None:
+            selected &= temperature >= min_temperature
+
+        if max_temperature is not None:
+            selected &= temperature <= max_temperature
+
+        grid_mask[~selected] = 0
+        return grid_mask
 
 
     ######################################################################################
@@ -187,6 +290,11 @@ class pion():
         elif self.dim_scale == 'pc':
             dims_max = (basic['max_extents'] * unit.cm).to(unit.pc)
             dims_min = (basic['min_extents'] * unit.cm).to(unit.pc)
+            self.geometry_container['edges_min'] = dims_min
+            self.geometry_container['edges_max'] = dims_max
+        elif self.dim_scale == 'au':
+            dims_max = (basic['max_extents'] * unit.cm).to(unit.au)
+            dims_min = (basic['min_extents'] * unit.cm).to(unit.au)
             self.geometry_container['edges_min'] = dims_min
             self.geometry_container['edges_max'] = dims_max
 
@@ -288,6 +396,11 @@ class pion():
         elif self.dim_scale == 'pc':
             dims_max = (basic['max_extents'] * unit.cm).to(unit.pc)
             dims_min = (basic['min_extents'] * unit.cm).to(unit.pc)
+            self.geometry_container['edges_min'] = dims_min
+            self.geometry_container['edges_max'] = dims_max
+        elif self.dim_scale == 'au':
+            dims_max = (basic['max_extents'] * unit.cm).to(unit.au)
+            dims_min = (basic['min_extents'] * unit.cm).to(unit.au)
             self.geometry_container['edges_min'] = dims_min
             self.geometry_container['edges_max'] = dims_max
         del basic

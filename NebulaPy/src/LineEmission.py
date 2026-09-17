@@ -209,7 +209,9 @@ class line_emission():
             species_density,
             cell_volume,
             grid_mask,
-            Nlines: Optional[int] = None
+            Nlines: Optional[int] = None,
+            wavelength_min: Optional[float] = None,
+            wavelength_max: Optional[float] = None
     ):
         """
         Computes the most luminous emission lines for a given species in a 1D or 2D dataset.
@@ -232,6 +234,12 @@ class line_emission():
             Mask specifying active grid cells.
         Nlines : int
             The number of most luminous emission lines to retrieve.
+        wavelength_min, wavelength_max : float, optional
+            Inclusive wavelength bounds in Angstrom. Each omitted bound is
+            unrestricted. Lines are filtered before selecting the brightest
+            Nlines; an interval with no lines returns empty result arrays and
+            a 'message' of 'No line in the specified range'. Omitting both
+            bounds searches all wavelengths.
 
         Returns
         -------
@@ -247,6 +255,14 @@ class line_emission():
         - The method loops over each grid level and computes line luminosities.
         - The most luminous lines are selected using `np.argsort()`.
         """
+
+        for name, bound in (("wavelength_min", wavelength_min),
+                            ("wavelength_max", wavelength_max)):
+            if bound is not None and (not np.isfinite(bound) or bound <= 0):
+                raise ValueError(f"{name} must be a finite positive wavelength in Angstrom")
+        if (wavelength_min is not None and wavelength_max is not None
+                and wavelength_min > wavelength_max):
+            raise ValueError("wavelength_min must be less than or equal to wavelength_max")
 
         # Define a tolerance for electron density (to avoid division by zero)
         electron_tolerance = const.ELECTRON_DENSITY_FLOOR
@@ -267,6 +283,16 @@ class line_emission():
         # Check if the species has emission lines
         if 'line' not in keys:
             logger.warning(f"{spectroscopic_name} has no line emission associated")
+            if wavelength_min is not None or wavelength_max is not None:
+                return {
+                    'spectroscopic': spectroscopic_name,
+                    'lines': np.array([], dtype=float),
+                    'luminosity': np.array([], dtype=float),
+                    'Avalue': np.array([], dtype=float),
+                    'Lower': np.array([], dtype=object),
+                    'Upper': np.array([], dtype=object),
+                    'message': 'No line in the specified range'
+                }
             return {'spectroscopic': spectroscopic_name}
         else:
             all_lines = species.get_allLines()
@@ -332,6 +358,15 @@ class line_emission():
             # Accumulate luminosity across all grid levels
             species_all_line_luminosity += species_all_lines_luminosity_level
 
+        # Filter before ranking so Nlines refers to lines within the interval.
+        wavelength_mask = np.ones(all_lines.shape, dtype=bool)
+        if wavelength_min is not None:
+            wavelength_mask &= all_lines >= wavelength_min
+        if wavelength_max is not None:
+            wavelength_mask &= all_lines <= wavelength_max
+        all_lines = all_lines[wavelength_mask]
+        species_all_line_luminosity = species_all_line_luminosity[wavelength_mask]
+
         # Retrieve the N most luminous lines
         # Handle Nlines option
         if Nlines is None:
@@ -363,7 +398,7 @@ class line_emission():
                     transition_lower[i] = allLineTransitions['Lower'][idx]
                     transition_upper[i] = allLineTransitions['Upper'][idx]
 
-        return {
+        result = {
             'spectroscopic': spectroscopic_name,
             'lines': brightest_lines,
             'luminosity': brightest_lines_luminosity,
@@ -371,6 +406,11 @@ class line_emission():
             'Lower': transition_lower,
             'Upper': transition_upper
         }
+        if (brightest_lines.size == 0
+                and (wavelength_min is not None or wavelength_max is not None)):
+            result['message'] = 'No line in the specified range'
+            logger.info(result['message'])
+        return result
 
     ######################################################################################
     # line luminosity for a given list of lines in 2D coordinate system

@@ -526,7 +526,13 @@ class chianti:
     ######################################################################################
     # get line emission rate for all lines within a wavelength range, with optional filter
     ######################################################################################
-    def get_line_coefficients(self, wavelength, allLines=True, filtername=None, filterfactor=None):
+    def get_line_coefficients(
+            self,
+            wavelength,
+            allLines=True,
+            line_profile=None,
+            profile_config=None,
+    ):
 
         logger.debug(
             "Retrieving all spectral-line emissivities for %s",
@@ -535,6 +541,20 @@ class chianti:
 
         wavelength = np.asarray(wavelength, dtype=np.float64)
 
+        if (line_profile is None) != (profile_config is None):
+            raise NebulaError(
+                "line_profile and profile_config must be supplied together."
+            )
+        if (
+                line_profile is not None
+                and not callable(
+                    getattr(line_profile, "global_line_profile", None)
+                )
+        ):
+            raise NebulaError(
+                "line_profile must provide a global_line_profile method."
+            )
+
         self.chianti_ion.emiss(allLines=allLines)
 
         emissivity = np.asarray(self.chianti_ion.Emiss['emiss'], dtype=np.float64)
@@ -542,9 +562,6 @@ class chianti:
 
         min_wvl = wavelength.min()
         max_wvl = wavelength.max()
-
-        useFilter = chfilters.gaussianR
-        useFactor = 1000.0
 
         selected_idx = np.where(
             (lines >= min_wvl) & (lines <= max_wvl)
@@ -567,23 +584,51 @@ class chianti:
         selected_lines = lines[selected_idx]
         selected_emissivity = emissivity[selected_idx, :]
 
+
+        if line_profile is None:
+            useFilter = chfilters.gaussianR
+            # Choose one Gaussian factor that is resolved across the complete
+            # wavelength grid. ChiantiPy defines sigma_lambda=lambda_0/factor,
+            # so requiring five grid intervals across
+            # FWHM=2.35482*lambda_0/factor gives the expression below.
+            grid_spacing = np.max(np.diff(wavelength))
+            grid_factor = (2.35482 * np.min(selected_lines) / (5.0 * grid_spacing))
+            useFactor = min(10000.0, grid_factor)
+            logger.debug("Default line-profile Gaussian factor: %.6f", useFactor,)
+
+        else:
+            logger.debug(
+                "Using global line profile: %s",
+                line_profile.__class__.__name__,
+            )
+
         for temp_idx in range(N_temp):
             for line_idx, line_wvl in enumerate(selected_lines):
-                line_profile = useFilter(
-                    wavelength,
-                    line_wvl,
-                    factor=useFactor
-                )
+
+                # default Chianti Gaussian profile
+                if line_profile is None:
+                    profile_values = useFilter(wavelength, line_wvl, factor=useFactor,)
+                # User-defined global line profile.
+                else:
+                    profile_values = line_profile.global_line_profile(
+                        wavelength=wavelength,
+                        line_wavelength=line_wvl,
+                        resolving_power=profile_config.resolving_power,
+                        global_velocity=profile_config.global_velocity,
+                        global_velocity_sigma=(
+                            profile_config.global_velocity_sigma
+                        ),
+                        relativistic=profile_config.relativistic,
+                    )
 
                 line_emission_coefficients[temp_idx, :] += (
-                        line_profile * selected_emissivity[line_idx, temp_idx]
+                        profile_values
+                        * selected_emissivity[line_idx, temp_idx]
                 )
 
-        logger.debug(
-            "Spectral-line calculation completed for %s",
-            self.chianti_ion.Spectroscopic,
-        )
 
+        logger.debug("Spectral-line calculation completed for %s",
+                     self.chianti_ion.Spectroscopic,)
         return line_emission_coefficients
 
     ######################################################################################

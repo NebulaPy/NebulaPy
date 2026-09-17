@@ -35,7 +35,7 @@ SimulationName = "CWB"
 # Colliding wind binaries
 #Macbook -> Set up paths and filenames
 OutputDir = '/Users/tony/Desktop/CWBs-NEMOv1/Post-Processing/WR140Test'  # Output image directory
-SiloDir = '/Users/tony/Desktop/CWBs-NEMOv1/Silo-n128'  # Directory containing silo files
+SiloDir = '/Users/tony/Desktop/CWBs-WR140/Silo-n128'  # Directory containing silo files
 Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
 start_time = 14.35  # days
 finish_time = None
@@ -122,17 +122,19 @@ def main():
     mesh_edges_max = pion.geometry_container['edges_max']
     N_grid = pion.geometry_container['Ngrid']
     grid_volume = pion.get_grid_volumes_2D()
-    grid_mask = pion.geometry_container['mask']
+    #grid_mask = pion.geometry_container['mask']
 
     # loading chemistry container for pion simulation data
     pion.load_chemistry()
     elements = pion.get_elements()
-    ion_list = ['Fe25+']
+
+    grid_mask_min_temperature = 1.0e6
+    grid_mask_max_temperature = 1.0e9
 
     # initializing spectrum class
     NebulaSpectrum = nebula.spectrum(
         min_wavelength=1.0,  # Minimum wavelength in Angstroms
-        max_wavelength=100,  # Maximum wavelength in Angstroms
+        max_wavelength=20,  # Maximum wavelength in Angstroms
         min_photon_energy=None,  # Minimum photon energy in keV # not implemented
         max_photon_energy=None,  # Maximum photon energy in keV # not implemented
         elements=elements,
@@ -141,10 +143,8 @@ def main():
         doFreebound=True,
         doLine=True,
         doTwophoton=True,
-        filtername=None,
-        filterfactor=None,
         userGrid=True,
-        gridSize=3000,
+        gridSize=4000,
         allLines=True,
         MPNcores=8,
     )
@@ -164,15 +164,40 @@ def main():
             sim_time.unit,
         )
 
-        # Extract the physical grids and ion densities from the simulation.
+        # Temperature from the simulation.
         temperature = np.asarray(
             pion.get_parameter('Temperature', silo_instant),
             dtype=np.float64
         )
+
+        # Electron density from the simulation.
         ne = pion.get_ne(silo_instant)
+
+        # ion densities from the simulation.
         species_densities = pion.get_species_number_densities(
             silo_instant,
             ion_list=NebulaSpectrum.required_density_ions,
+        )
+
+        # This call independently reloads NG_Mask before applying the temperature
+        # bounds, so filtering cannot accumulate between snapshots.
+        filtered_mask = pion.apply_grid_filters(
+            silo_instant,
+            temperature=temperature,
+            min_temperature=grid_mask_min_temperature,
+            max_temperature=grid_mask_max_temperature
+        )
+
+        # Snapshot-global line shift and Gaussian broadening.
+        resolving_power = 0
+        VELOCITY_SHIFT_KM_S = -1365.0
+        VELOCITY_SIGMA_KM_S = 578.0
+        relativistic = False
+        NebulaSpectrum.initialize_global_line_profile(
+            resolving_power=resolving_power,
+            global_velocity=VELOCITY_SHIFT_KM_S,
+            global_velocity_sigma=VELOCITY_SIGMA_KM_S,
+            relativistic=relativistic,
         )
 
         NebulaSpectrum.generate_spectrum(
@@ -180,7 +205,7 @@ def main():
             ne=ne,
             species_densities=species_densities,
             grid_volume=grid_volume,
-            grid_mask=grid_mask
+            grid_mask=filtered_mask,
         )
 
         wavelength = NebulaSpectrum.WavelengthGrid
@@ -266,6 +291,16 @@ def main():
             if NebulaSpectrum.ion_list is None
             else ", ".join(NebulaSpectrum.ion_list)
         )
+        minimum_temperature_description = (
+            "None"
+            if grid_mask_min_temperature is None
+            else f"{grid_mask_min_temperature:.3e} K"
+        )
+        maximum_temperature_description = (
+            "None"
+            if grid_mask_max_temperature is None
+            else f"{grid_mask_max_temperature:.3e} K"
+        )
         plot_information = "\n".join((
             f"Simulation: {SimulationName}",
             f"Time: {sim_time.value:.4g} {sim_time.unit}",
@@ -273,8 +308,16 @@ def main():
             f"Ions: {ion_description}",
             f"Processes: {', '.join(enabled_processes)}",
             (
+                "Grid-mask minimum temperature: "
+                f"{minimum_temperature_description}"
+            ),
+            (
+                "Grid-mask maximum temperature: "
+                f"{maximum_temperature_description}"
+            ),
+            (
                 f"Wavelength range: {wavelength[0]:.3g}–"
-                f"{wavelength[-1]:.3g} Å"
+                f"{wavelength[-1]:.3g} Å ({len(wavelength)} points)"
             ),
         ))
         information_box = ax.legend(

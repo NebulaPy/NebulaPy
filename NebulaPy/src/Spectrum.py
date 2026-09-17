@@ -15,6 +15,7 @@ import traceback
 import numpy as np
 from NebulaPy.src.LoggingConfig import NebulaError, get_logger
 from NebulaPy.src.Progress import Progress, track
+from NebulaPy.src.LineProfile import GlobalLineProfileConfig, LineProfile
 
 logger = get_logger(__name__)
 
@@ -111,8 +112,6 @@ class spectrum:
             doTwophoton=False,
             elements=None,
             ion_list=None,
-            filtername=None,
-            filterfactor=None,
             allLines=True,
             userGrid=False,
             MPNcores=4,
@@ -166,9 +165,6 @@ class spectrum:
         self.freebound = doFreebound
         self.line = doLine
         self.twophoton = doTwophoton
-        # Preserve optional filtering and line-selection settings for callers.
-        self.filtername = filtername
-        self.filterfactor = filterfactor
         self.allLines = allLines
         if self.line:
             logger.info(
@@ -181,6 +177,11 @@ class spectrum:
             )
         # All progress helpers consult this single flag.
         self.progress = progress
+
+        # Use the default CHIANTI line profile unless the user later calls
+        # initialize_global_line_profile().
+        self.line_profile = None
+        self.line_profile_config = None
 
 
         logger.info("Initializing spectrum calculation")
@@ -326,32 +327,7 @@ class spectrum:
             self.chianti_species_attributes = selected_species
 
             required_density_ions = list(dict.fromkeys(ion_list))
-            if self.freebound:
-                freebound_dependencies = set()
-                for attributes in selected_species.values():
-                    lower_chianti_ion = attributes.get("lower", 0)
-                    if "fb" in attributes["keys"] and lower_chianti_ion:
-                        freebound_dependencies.add(
-                            getPionSymbol(lower_chianti_ion)
-                        )
-
-                required_density_ions.extend(
-                    sorted(
-                        freebound_dependencies - set(required_density_ions)
-                    )
-                )
-
             self.required_density_ions = required_density_ions
-
-            if set(required_density_ions) != set(ion_list):
-                logger.info(
-                    "Additional ion densities required for free-bound emission: %s",
-                    ", ".join(
-                        ion
-                        for ion in required_density_ions
-                        if ion not in set(ion_list)
-                    ),
-                )
 
         #####################################################################
         # The numerical wavelength grid is deferred until spectrum generation.
@@ -537,6 +513,30 @@ class spectrum:
             self.WavelengthGrid[-1],
             self.N_wvl,
         )
+
+    ######################################################################################
+    # Initialize User-Defined Line Profile
+    ######################################################################################
+    def initialize_global_line_profile(
+            self,
+            resolving_power=1000.0,
+            global_velocity=0.0,
+            global_velocity_sigma=0.0,
+            relativistic=False,
+    ):
+        """Configure the global line profile for subsequent spectra."""
+
+        self.line_profile = LineProfile()
+        self.line_profile_config = GlobalLineProfileConfig(
+            resolving_power=resolving_power,
+            global_velocity=global_velocity,
+            global_velocity_sigma=global_velocity_sigma,
+            relativistic=relativistic,
+        )
+        logger.info(
+            "Initialized Gaussian line profile with global parameters"
+        )
+
 
 
     ######################################################################################
@@ -771,12 +771,6 @@ class spectrum:
 
         for chianti_species, attributes in self.chianti_species_attributes.items():
             pion_species = getPionSymbol(chianti_species)
-            lower_chianti_ion = attributes.get("lower", 0)
-            lower_pion_species = (
-                getPionSymbol(lower_chianti_ion)
-                if lower_chianti_ion
-                else None
-            )
             processes = attributes["keys"]
 
             has_nonfb_output = (
@@ -796,7 +790,6 @@ class spectrum:
                 self.freebound
                 and "fb" in processes
                 and pion_species in row_species_densities
-                and lower_pion_species in row_species_densities
             )
 
             if not (has_nonfb_output or has_fb_output):
@@ -809,6 +802,7 @@ class spectrum:
             )
 
             try:
+                # bremsstrahlung
                 if self.bremsstrahlung and "ff" in processes:
                     accumulate(
                         pion_species,
@@ -818,15 +812,15 @@ class spectrum:
                         ),
                     )
 
+                # line
                 if self.line and "line" in processes:
                     line_coefficients = CHIANTI.get_line_coefficients(
                         wavelength=self.WavelengthGrid,
                         allLines=self.allLines,
+                        line_profile=self.line_profile,
+                        profile_config=self.line_profile_config,
                     )
-                    line_coefficients = np.asarray(
-                        line_coefficients,
-                        dtype=np.float64,
-                    )
+                    line_coefficients = np.asarray(line_coefficients, dtype=np.float64,)
                     if line_coefficients.ndim == 1:
                         line_coefficients = line_coefficients[np.newaxis, :]
                     line_coefficients = np.divide(
@@ -844,8 +838,8 @@ class spectrum:
                         line_coefficients,
                     )
 
-                if (
-                        self.twophoton
+                # two-photon
+                if (self.twophoton
                         and "line" in processes
                         and (attributes["Z"] - attributes["Ion"]) in (0, 1)
                         and not attributes["Dielectronic"]
@@ -860,7 +854,7 @@ class spectrum:
 
                 if has_fb_output:
                     accumulate(
-                        lower_pion_species,
+                        pion_species,
                         pion_species,
                         CHIANTI.get_freebound_coefficients(
                             wavelength=self.WavelengthGrid,

@@ -49,14 +49,12 @@ def pytest_sessionstart(session):
 def pytest_collection_modifyitems(items):
     """Replace implementation-oriented node IDs with user-facing test names."""
     test_order = {
-        "test_database_release_summary": 0,
-        "test_cie": 1,
-        "test_sed": 2,
-        "test_em": 3,
+        "test_cie": 0,
+        "test_sed": 1,
+        "test_em": 2,
     }
     readable_test_names = {
         "test_cie": "CIE ion-balance reference test",
-        "test_database_release_summary": "NebulaPy database validity test",
         "test_em": "Emission measure reference test",
         "test_sed": "SED reference test",
     }
