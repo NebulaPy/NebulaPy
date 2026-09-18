@@ -74,16 +74,17 @@ batched_silos = nebula.Silo.batch(
 
 # Initialize the PION class to handle simulation data
 pion = nebula.pion(batched_silos, progress=True)
+nemo = nebula.NEMO(pion)
 
 # Load chemistry and geometry data
-pion.load_chemistry()
+nemo.load_chemistry()
 pion.load_geometry(scale='cm')
 
 print(f" ---------------------------")
 print(" task: identifying dominant spectral lines for the given ions")
 
 # Check if the listed ions are present in the simulation chemistry container
-ion_list = pion.ion_batch_check(ion_list=ion_list, top_ion_check=True, terminate=False)
+ion_list = nemo.ion_batch_check(ion_list=ion_list, top_ion_check=True, terminate=False)
 
 # Prepare output file for results
 outfile = os.path.join(output_dir, filename)
@@ -121,12 +122,12 @@ for step, silo_instant in enumerate(batched_silos):
 
     # Extract temperature and electron number density
     temperature = pion.get_parameter('Temperature', silo_instant)
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
 
     # Analyze each ion
     for ion in ion_list:
         species_line_emission = nebula.line_emission(ion=ion)
-        n_species = pion.get_ion_number_density(ion, silo_instant)
+        n_species = nemo.get_ion_number_density(ion, silo_instant)
 
         dominant_lines = species_line_emission.get_species_dominant_lines(
             temperature=temperature, ne=ne, species_density=n_species,

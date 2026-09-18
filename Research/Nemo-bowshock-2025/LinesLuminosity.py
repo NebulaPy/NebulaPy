@@ -69,8 +69,9 @@ batched_silos = nebula.Silo.batch(
 
 # Initialize the PION class to handle simulation data
 pion = nebula.pion(batched_silos, progress=True)
+nemo = nebula.NEMO(pion)
 # Load chemistry and geometry data
-pion.load_chemistry()
+nemo.load_chemistry()
 pion.load_geometry(scale='cm')
 
 print(f" ---------------------------")
@@ -179,19 +180,19 @@ for step, silo_instant in enumerate(batched_silos):
 
     # Extract temperature and electron number density
     temperature = pion.get_parameter('Temperature', silo_instant)
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
 
-    He1P_num_density = pion.get_ion_number_density(He1P_pion_ion, silo_instant)  # Retrieve species number density
-    C2P_num_density = pion.get_ion_number_density(C2P_pion_ion, silo_instant)  # Retrieve species number density
-    N1P_num_density = pion.get_ion_number_density(N1P_pion_ion, silo_instant)  # Retrieve species number density
-    N2P_num_density = pion.get_ion_number_density(N2P_pion_ion, silo_instant)  # Retrieve species number density
-    O1P_num_density = pion.get_ion_number_density(O1P_pion_ion, silo_instant)  # Retrieve species number density
-    O2P_num_density = pion.get_ion_number_density(O2P_pion_ion, silo_instant)  # Retrieve species number density
-    Ne1P_num_density = pion.get_ion_number_density(Ne1P_pion_ion, silo_instant)  # Retrieve species number density
-    Ne2P_num_density = pion.get_ion_number_density(Ne2P_pion_ion, silo_instant)  # Retrieve species number density
-    S1P_num_density = pion.get_ion_number_density(S1P_pion_ion, silo_instant)  # Retrieve species number density
-    S2P_num_density = pion.get_ion_number_density(S2P_pion_ion, silo_instant)  # Retrieve species number density
-    S3P_num_density = pion.get_ion_number_density(S3P_pion_ion, silo_instant)  # Retrieve species number density
+    He1P_num_density = nemo.get_ion_number_density(He1P_pion_ion, silo_instant)  # Retrieve species number density
+    C2P_num_density = nemo.get_ion_number_density(C2P_pion_ion, silo_instant)  # Retrieve species number density
+    N1P_num_density = nemo.get_ion_number_density(N1P_pion_ion, silo_instant)  # Retrieve species number density
+    N2P_num_density = nemo.get_ion_number_density(N2P_pion_ion, silo_instant)  # Retrieve species number density
+    O1P_num_density = nemo.get_ion_number_density(O1P_pion_ion, silo_instant)  # Retrieve species number density
+    O2P_num_density = nemo.get_ion_number_density(O2P_pion_ion, silo_instant)  # Retrieve species number density
+    Ne1P_num_density = nemo.get_ion_number_density(Ne1P_pion_ion, silo_instant)  # Retrieve species number density
+    Ne2P_num_density = nemo.get_ion_number_density(Ne2P_pion_ion, silo_instant)  # Retrieve species number density
+    S1P_num_density = nemo.get_ion_number_density(S1P_pion_ion, silo_instant)  # Retrieve species number density
+    S2P_num_density = nemo.get_ion_number_density(S2P_pion_ion, silo_instant)  # Retrieve species number density
+    S3P_num_density = nemo.get_ion_number_density(S3P_pion_ion, silo_instant)  # Retrieve species number density
 
 
     # 1. Calculate the line luminosity for the specific emission line

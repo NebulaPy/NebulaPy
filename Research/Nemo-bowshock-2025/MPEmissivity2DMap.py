@@ -110,6 +110,7 @@ if __name__ == "__main__":
 
     # Initialize the PION class to handle simulation data
     pion = nebula.pion(batched_silos, progress=True)
+    nemo = nebula.NEMO(pion)
 
     # Calculates and stores geometric grid parameters.
     # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -133,7 +134,7 @@ if __name__ == "__main__":
 
     # Extract all chemistry information from the silo files into a chemistry container
     # This uses the first time instant's silo file to initialize
-    pion.load_chemistry()
+    nemo.load_chemistry()
 
     print(f" ---------------------------")
     print(f" task: spectral line emissivity map computation via multiprocessing")
@@ -285,7 +286,7 @@ if __name__ == "__main__":
 
         # Extract temperature and electron number density
         temperature = pion.get_parameter('Temperature', silo_instant)
-        ne = pion.get_ne(silo_instant)
+        ne = nemo.get_ne(silo_instant)
 
         # h5 metadata
         metadata['step'] = step
@@ -364,7 +365,7 @@ if __name__ == "__main__":
             ion_output_dir = os.path.join(output_dir, ion_name)
 
             # get ion number density
-            n_ion = pion.get_ion_number_density(ion, silo_instant)
+            n_ion = nemo.get_ion_number_density(ion, silo_instant)
 
             # saving data to h5 file ########################################################
             h5_filename = f"{filebase}_emiss_{ion_name}_{str(step).zfill(4)}.h5"

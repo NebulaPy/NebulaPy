@@ -51,14 +51,16 @@ def main():
     )
 
     pion = nebula.pion(batched_silos, progress=False)
-    pion.load_chemistry()
+
+    nemo = nebula.NEMO(pion)
+    nemo.load_chemistry()
     # DEM uses number densities in cm^-3, so cell volumes must remain in cm^3.
     # There is no spatial axis in this plot; its x-axis is log10 temperature.
     pion.load_geometry(scale="cm")
 
     geometry = pion.geometry_container
     elements_present = ", ".join(
-        pion.chemistry_container["tracer_elements"]
+        nemo.chemistry_container["tracer_elements"]
     )
     number_of_grid_cells = geometry["Ngrid"]
     grid_edges_min = geometry["edges_min"]
@@ -89,11 +91,11 @@ def main():
 
         temperature = pion.get_parameter("Temperature", silo_snapshot)
         mass_density = pion.get_parameter("Density", silo_snapshot)
-        electron_number_density = pion.get_ne(
+        electron_number_density = nemo.get_ne(
             silo_snapshot,
             progress=False,
         )
-        species_number_densities = pion.get_species_number_densities(
+        species_number_densities = nemo.get_species_number_densities(
             silo_snapshot
         )
 

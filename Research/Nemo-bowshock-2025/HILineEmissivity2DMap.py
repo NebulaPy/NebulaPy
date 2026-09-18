@@ -100,6 +100,7 @@ N_time_instant = len(batched_silos)
 
 # Initialize the PION class to handle simulation data
 pion = nebula.pion(batched_silos, progress=True)
+nemo = nebula.NEMO(pion)
 
 # Calculates and stores geometric grid parameters.
 # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -122,7 +123,7 @@ metadata = {'minimum_mesh_edges': mesh_edges_min,
 
 # Extract all chemistry information from the silo files into a chemistry container
 # This uses the first time instant's silo file to initialize
-pion.load_chemistry()
+nemo.load_chemistry()
 
 electron_tolerance = 1.E-08  # Floor value for electron density
 ion_name = pion_ion.replace('+', 'p')
@@ -146,7 +147,7 @@ for step, silo_instant in enumerate(batched_silos):
 
     # Extract temperature and electron number density
     temperature = pion.get_parameter('Temperature', silo_instant)
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
 
     # h5 metadata
     metadata['step'] = step
@@ -155,7 +156,7 @@ for step, silo_instant in enumerate(batched_silos):
 
     # Retrieve Physical Parameters
     temperature = pion.get_parameter('Temperature', silo_instant)
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
 
     # Create a zero emissivity map with the same shape as the temperature grids
     Halpha_coll_emissivity_map = np.array([np.zeros(arr.shape) for arr in temperature])
@@ -269,9 +270,9 @@ for step, silo_instant in enumerate(batched_silos):
     Brgamma_recomb_emiss_map_dict = {'H I 21655.283': Brgamma_recomb_emissivity_map}
 
     # get neutral hydrogen number density
-    HIden = pion.get_ion_number_density(pion_ion, silo_instant)
+    HIden = nemo.get_ion_number_density(pion_ion, silo_instant)
     # get ionised hydrogen number density
-    HIIden = pion.get_ion_number_density('H1+', silo_instant)
+    HIIden = nemo.get_ion_number_density('H1+', silo_instant)
 
     # --- Save HAlpha Emissivity Maps to HDF5 ---
     h5_filename = f"{filebase}_emiss_{ion_name}_{str(step).zfill(4)}.h5"

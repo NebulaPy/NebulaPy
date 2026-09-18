@@ -251,16 +251,18 @@ if __name__ == "__main__":
     ###############################################################
     # Initialize the PION class to extract microphysics data
     neq_pion = nebula.pion(neq_batched_silos, progress=True)
+    neq_nemo = nebula.NEMO(neq_pion)
     # Load chemistry and geometry data
-    neq_pion.load_chemistry()
+    neq_nemo.load_chemistry()
     print(" Finished loading chemistry for non-equilibrium silo files")
     neq_pion.load_geometry(scale=spatial_scale)
     print(" Finished loading geometry for non-equilibrium silo files")
 
     # Initialize the PION class to extract microphysics data
     ieq_pion = nebula.pion(ieq_batched_silos, progress=True)
+    ieq_nemo = nebula.NEMO(ieq_pion)
     # Load chemistry and geometry data
-    ieq_pion.load_chemistry()
+    ieq_nemo.load_chemistry()
     print(" Finished loading chemistry for equilibrium silo files")
     ieq_pion.load_geometry(scale=spatial_scale)
     print(" Finished loading geometry for equilibrium silo files")
@@ -330,14 +332,14 @@ if __name__ == "__main__":
 
         # Extract temperature and electron number density
         neq_temperature = neq_pion.get_parameter('Temperature', neq_silo)
-        neq_ne = neq_pion.get_ne(neq_silo)
+        neq_ne = neq_nemo.get_ne(neq_silo)
 
         print(" Multiprocessing: preparing per-ion NEQ line-emission tasks")
         neq_task_packet = {
             ion: (
                 line_emission_objects[ion],  # line emission object
                 ion_lines[ion],  # list of wavelengths
-                neq_pion.get_ion_number_density(
+                neq_nemo.get_ion_number_density(
                     "H1+" if ion == "H" else ion,  # <-- remap only here
                     neq_silo
                 ),
@@ -360,14 +362,14 @@ if __name__ == "__main__":
 
         # Extract temperature and electron number density
         ieq_temperature = ieq_pion.get_parameter('Temperature', ieq_silo)
-        ieq_ne = ieq_pion.get_ne(ieq_silo)
+        ieq_ne = ieq_nemo.get_ne(ieq_silo)
 
         print(" Multiprocessing: preparing per-ion IEQ line-emission tasks")
         ieq_task_packet = {
             ion: (
                 line_emission_objects[ion],  # line emission object
                 ion_lines[ion],  # list of wavelengths
-                ieq_pion.get_ion_number_density(
+                ieq_nemo.get_ion_number_density(
                     "H1+" if ion == "H" else ion,  # <-- remap only here
                     ieq_silo
                 ),

@@ -52,6 +52,7 @@ batched_silos = nebula.Silo.batch(
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
 pion = nebula.pion(batched_silos, progress=True)
+nemo = nebula.NEMO(pion)
 
 # Calculates and stores geometric grid parameters.
 # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -66,7 +67,7 @@ print(mesh_edges_max)
 
 # Extract all chemistry information from the silo files into a chemistry container
 # This uses the first time instant's silo file to initialize
-pion.load_chemistry()
+nemo.load_chemistry()
 
 runtime = 0.0
 # Loop over each time instant in the batched silo files
@@ -92,7 +93,7 @@ for step, silo_instant in enumerate(batched_silos):
     ylim = 8.0
 
     for j, ion in enumerate(ion_list):
-        n_ion = pion.get_ion_number_density(ion, silo_instant)
+        n_ion = nemo.get_ion_number_density(ion, silo_instant)
 
         axU = axes[0, j]  # upper hemisphere
         axL = axes[1, j]  # lower hemisphere (mirror)

@@ -69,7 +69,8 @@ def main():
 
     last_snapshot = batched_silos[-1]
     pion = nebula.pion([last_snapshot], progress=False)
-    pion.load_chemistry()
+    nemo = nebula.NEMO(pion)
+    nemo.load_chemistry()
     pion.load_geometry(scale="cm")
 
     simulation_time = pion.get_simulation_time(last_snapshot,time_unit=time_unit,)
@@ -100,7 +101,7 @@ def main():
     }
 
     ###########################################################################
-    # Approximate electron density without calling pion.get_ne()
+    # Approximate electron density without calling nemo.get_ne()
     ###########################################################################
     # At X-ray temperatures the plasma is approximately fully ionized:
     #

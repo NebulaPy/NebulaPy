@@ -344,7 +344,9 @@ python3 -c "import os, Silo, NebulaPy.src; print('XUVTOP:', os.environ['XUVTOP']
 ## Quick start
 
 The following example groups PION files into simulation snapshots and loads the
-geometry and chemistry metadata:
+geometry and chemistry metadata. Use `nebula.NEMO` for chemistry workflows;
+`nebula.pion` owns geometry, grid-level selection, and general field access.
+Pass that reader to `NEMO` for chemistry calculations:
 
 ```python
 import NebulaPy.src as nebula
@@ -362,7 +364,8 @@ snapshots = nebula.Silo.batch(
 
 pion = nebula.pion(snapshots, progress=True)
 pion.load_geometry(scale="cm")
-pion.load_chemistry()
+nemo = nebula.NEMO(pion)
+nemo.load_chemistry()
 
 logger.info("Loaded %s simulation snapshots", len(snapshots))
 ```

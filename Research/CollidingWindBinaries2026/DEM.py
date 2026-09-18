@@ -63,9 +63,10 @@ else:
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
 pion = nebula.pion(batched_silos, progress=True)
+nemo = nebula.NEMO(pion)
 
 # load chemistry
-pion.load_chemistry()
+nemo.load_chemistry()
 
 # Calculates and stores geometric grid parameters.
 # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -95,9 +96,9 @@ for step, silo_instant in enumerate(batched_silos):
     # Extract temperature and electron number density
     temperature = pion.get_parameter('Temperature', silo_instant)
     density = pion.get_parameter('Density', silo_instant)
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
     grid_mask = pion.geometry_container['mask']
-    number_densities = pion.get_species_number_densities(silo_instant)
+    number_densities = nemo.get_species_number_densities(silo_instant)
 
     EM.DEM2D(temperature=temperature, ne=ne,
              speciesDensities=number_densities,

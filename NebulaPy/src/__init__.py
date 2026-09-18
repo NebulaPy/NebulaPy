@@ -8,6 +8,7 @@ from .Spectrum import spectrum
 from .SED import sed
 from .Cooling import *
 from .PION import pion
+from .NEMO import NEMO
 from .Silo import Silo
 from .PyNeb import pyneb
 from .CIE import cieMode

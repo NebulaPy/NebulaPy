@@ -122,8 +122,9 @@ if __name__ == "__main__":
 
     # Initialize the PION class to handle simulation data
     pion = nebula.pion(batched_silos, progress=True)
+    nemo = nebula.NEMO(pion)
     # Load chemistry and geometry data
-    pion.load_chemistry()
+    nemo.load_chemistry()
     pion.load_geometry(scale='cm')
 
     print(f" ---------------------------")
@@ -235,19 +236,19 @@ if __name__ == "__main__":
 
         # Extract temperature and electron number density
         temperature = pion.get_parameter('Temperature', silo_instant)
-        ne = pion.get_ne(silo_instant)
+        ne = nemo.get_ne(silo_instant)
         # Retrieve species number density
-        He1P_num_density = pion.get_ion_number_density(He1P_pion_ion, silo_instant)
-        C2P_num_density = pion.get_ion_number_density(C2P_pion_ion, silo_instant)
-        N1P_num_density = pion.get_ion_number_density(N1P_pion_ion, silo_instant)
-        N2P_num_density = pion.get_ion_number_density(N2P_pion_ion, silo_instant)
-        O1P_num_density = pion.get_ion_number_density(O1P_pion_ion, silo_instant)
-        O2P_num_density = pion.get_ion_number_density(O2P_pion_ion, silo_instant)
-        Ne1P_num_density = pion.get_ion_number_density(Ne1P_pion_ion, silo_instant)
-        Ne2P_num_density = pion.get_ion_number_density(Ne2P_pion_ion, silo_instant)
-        S1P_num_density = pion.get_ion_number_density(S1P_pion_ion, silo_instant)
-        S2P_num_density = pion.get_ion_number_density(S2P_pion_ion, silo_instant)
-        S3P_num_density = pion.get_ion_number_density(S3P_pion_ion, silo_instant)
+        He1P_num_density = nemo.get_ion_number_density(He1P_pion_ion, silo_instant)
+        C2P_num_density = nemo.get_ion_number_density(C2P_pion_ion, silo_instant)
+        N1P_num_density = nemo.get_ion_number_density(N1P_pion_ion, silo_instant)
+        N2P_num_density = nemo.get_ion_number_density(N2P_pion_ion, silo_instant)
+        O1P_num_density = nemo.get_ion_number_density(O1P_pion_ion, silo_instant)
+        O2P_num_density = nemo.get_ion_number_density(O2P_pion_ion, silo_instant)
+        Ne1P_num_density = nemo.get_ion_number_density(Ne1P_pion_ion, silo_instant)
+        Ne2P_num_density = nemo.get_ion_number_density(Ne2P_pion_ion, silo_instant)
+        S1P_num_density = nemo.get_ion_number_density(S1P_pion_ion, silo_instant)
+        S2P_num_density = nemo.get_ion_number_density(S2P_pion_ion, silo_instant)
+        S3P_num_density = nemo.get_ion_number_density(S3P_pion_ion, silo_instant)
 
         # ions for processing
         ions = {

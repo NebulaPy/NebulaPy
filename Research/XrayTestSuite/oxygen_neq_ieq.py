@@ -67,8 +67,9 @@ def main():
 
     neq_silo = neq_batched_silos[0]
     neq_pion = nebula.pion(neq_batched_silos, progress=False)
+    neq_nemo = nebula.NEMO(neq_pion)
     neq_pion.load_geometry(scale=spatial_scale)
-    neq_pion.load_chemistry()
+    neq_nemo.load_chemistry()
 
     geometry = neq_pion.geometry_container
     if geometry["coordinate_sys"] != "cylindrical":
@@ -83,7 +84,7 @@ def main():
 
     temperature = neq_pion.get_parameter("Temperature", neq_silo)
     oxygen_mass_fraction = neq_pion.get_parameter(
-        neq_pion.chemistry_container["mass_fractions"]["O"],
+        neq_nemo.chemistry_container["mass_fractions"]["O"],
         neq_silo,
     )
     simulation_time = neq_pion.get_simulation_time(
@@ -101,9 +102,9 @@ def main():
 
     for ion in oxygen_ions:
         if ion in const.FULLY_IONIZED_IONS:
-            ion_mass_fraction = neq_pion.get_top_ion_massfrac(ion, neq_silo)
+            ion_mass_fraction = neq_nemo.get_top_ion_massfrac(ion, neq_silo)
         else:
-            ion_mass_fraction = neq_pion.get_ion_values(ion, neq_silo)
+            ion_mass_fraction = neq_nemo.get_ion_values(ion, neq_silo)
 
         neq_ion_fractions[ion] = [
             np.divide(

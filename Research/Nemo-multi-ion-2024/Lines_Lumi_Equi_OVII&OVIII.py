@@ -51,10 +51,11 @@ batched_silos = nebula.Silo.batch(
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
 pion = nebula.pion(batched_silos, progress=True)
+nemo = nebula.NEMO(pion)
 
 # Extract all chemistry information from the silo files into a chemistry container
 # This uses the first time instant's silo file to initialize
-pion.load_chemistry()
+nemo.load_chemistry()
 
 # Initialize spherical grid parameters (e.g., radius, shell volumes)
 # This sets up the grid using the first silo file in the batch
@@ -95,15 +96,15 @@ for step, silo_instant in enumerate(batched_silos):
     # Extract necessary physical parameters for the current time instant
     density = pion.get_parameter('Density', silo_instant)  # Retrieve density
     temperature = pion.get_parameter('Temperature', silo_instant)  # Retrieve temperature
-    O6P_massfrac = pion.get_ion_values(O6P_pion_ion, silo_instant)  # Retrieve ion mass fraction
-    O7P_massfrac = pion.get_ion_values(O7P_pion_ion, silo_instant)  # Retrieve ion mass fraction
+    O6P_massfrac = nemo.get_ion_values(O6P_pion_ion, silo_instant)  # Retrieve ion mass fraction
+    O7P_massfrac = nemo.get_ion_values(O7P_pion_ion, silo_instant)  # Retrieve ion mass fraction
 
     # Calculate ion number density (number of ions per unit volume)
     O6P_num_density = O6P_massfrac * density / mass_O
     O7P_num_density = O7P_massfrac * density / mass_O
 
     # Retrieve the electron number density
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
 
     # Calculate the line luminosity for the specific emission line
     O6P_line_emission.lineluminosity_spherical(

@@ -173,8 +173,9 @@ if __name__ == "__main__":
 
     # Initialize the PION class to handle simulation data
     pion = nebula.pion(batched_silos, progress=True)
+    nemo = nebula.NEMO(pion)
     # Load chemistry and geometry data
-    pion.load_chemistry()
+    nemo.load_chemistry()
     pion.load_geometry(scale='cm')
 
     print(f" ---------------------------")
@@ -279,15 +280,15 @@ if __name__ == "__main__":
         # get temperature
         temperature = pion.get_parameter('Temperature', silo_instant)
         # calculate electron number density
-        ne = pion.get_ne(silo_instant)
+        ne = nemo.get_ne(silo_instant)
         # generate ISM shocked mask
         shocked_ism_mask = generate_shocked_ism_mask(pion, silo_instant)
 
         # Retrieve species number density
-        H_num_density = pion.get_ion_number_density(pion_ion, silo_instant)
+        H_num_density = nemo.get_ion_number_density(pion_ion, silo_instant)
         # note: require H1+ number density to calculate recombination line
         # luminosities, hence
-        H1P_num_density = pion.get_ion_number_density('H1+', silo_instant)
+        H1P_num_density = nemo.get_ion_number_density('H1+', silo_instant)
 
         # list of all processes
         all_processes = {

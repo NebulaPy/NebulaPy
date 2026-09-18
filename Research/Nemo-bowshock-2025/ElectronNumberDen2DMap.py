@@ -53,7 +53,8 @@ N_time_instant = len(batched_silos)
 
 # --- Load Simulation Data ---
 pion = nebula.pion(batched_silos, progress=True)
-pion.load_chemistry()  # Load ion and reaction network data
+nemo = nebula.NEMO(pion)
+nemo.load_chemistry()  # Load ion and reaction network data
 pion.load_geometry(scale='pc')  # Load spatial grid configuration
 
 # --- Extract Geometry Info ---
@@ -79,7 +80,7 @@ for step, silo_instant in enumerate(batched_silos):
     print(f" Step: {step}/{N_time_instant - 1} | Simulation Time: {sim_time:.6e} kyr")
 
     # --- Retrieve electron number density ---
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
 
     # --- Generate electron number density Map Plots ---
     fig, ax = plt.subplots(figsize=(8, 6))

@@ -86,6 +86,7 @@ batched_silos = nebula.Silo.batch(
 
 # Initialize the Pion class from NebulaPy, which handles the simulation data
 pion = nebula.pion(batched_silos, progress=True)
+nemo = nebula.NEMO(pion)
 
 # Calculates and stores geometric grid parameters.
 # For example, in a spherical geometry, it extracts radius and shell volumes
@@ -103,7 +104,7 @@ metadata = {"minimum_mesh_edges": mesh_edges_min,
 
 # Extract all chemistry information from the silo files into a chemistry container
 # This uses the first time instant's silo file to initialize
-pion.load_chemistry()
+nemo.load_chemistry()
 
 Nstep = len(batched_silos)
 runtime = 0.0
@@ -129,9 +130,9 @@ for step, silo_instant in enumerate(batched_silos):
     total_cooling_lengthscale = [np.zeros(shape) for shape in shape_list]
 
     # Retrieve the electron number density
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
     # Retrieve the total number density from the particular instant from the chemistry container
-    ntot = pion.get_ntot(silo_instant)
+    ntot = nemo.get_ntot(silo_instant)
 
     for index, ion in enumerate(ion_list):
 
@@ -139,7 +140,7 @@ for step, silo_instant in enumerate(batched_silos):
         cooling = nebula.cooling(pion_ion=ion)
 
         # Retrieve the ion number density
-        n_ion = pion.get_ion_number_density(ion, silo_instant)
+        n_ion = nemo.get_ion_number_density(ion, silo_instant)
 
         print(f" generating {ion} cooling rate map for each grid level(s)")
         # Initialize arrays for ion cooling rate

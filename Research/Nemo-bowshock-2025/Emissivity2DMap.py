@@ -59,7 +59,8 @@ N_time_instant = len(batched_silos)
 
 # --- Load Simulation Data ---
 pion = nebula.pion(batched_silos, progress=True)
-pion.load_chemistry()  # Load ion and reaction network data
+nemo = nebula.NEMO(pion)
+nemo.load_chemistry()  # Load ion and reaction network data
 pion.load_geometry(scale='cm')  # Load spatial grid configuration
 
 # --- Extract Geometry Info ---
@@ -101,7 +102,7 @@ for step, silo_instant in enumerate(batched_silos):
 
     # --- Retrieve Physical Parameters ---
     temperature = pion.get_parameter('Temperature', silo_instant)
-    ne = pion.get_ne(silo_instant)
+    ne = nemo.get_ne(silo_instant)
 
     # --- Calculate Emissivity Maps for All Lines ---
     emissivity_map_dict = line_emission.line_emissivity_map_cylindrical(
