@@ -59,6 +59,7 @@ def main():
 
     # Initialize the Pion class from NebulaPy, which handles the simulation data
     pion = nebula.pion(batched_silos, progress=True)
+    nemo = nebula.NEMO(pion)
 
     # loading geometry attributes from the first silo file in the batch
     # and saves them into a geometry container.
@@ -71,8 +72,8 @@ def main():
     grid_mask = pion.geometry_container['mask']
 
     # loading chemistry container for pion simulation data
-    pion.load_chemistry()
-    elements = pion.get_elements()
+    nemo.load_chemistry()
+    elements = nemo.get_elements()
     ion_list = None
 
     # initializing spectrum class
@@ -115,8 +116,8 @@ def main():
             pion.get_parameter('Temperature', silo_instant),
             dtype=np.float64
         )
-        ne = pion.get_ne(silo_instant)
-        species_densities = pion.get_species_number_densities(
+        ne = nemo.get_ne(silo_instant)
+        species_densities = nemo.get_species_number_densities(
             silo_instant,
             ion_list=NebulaSpectrum.required_density_ions,
         )

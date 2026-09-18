@@ -1,0 +1,262 @@
+\section{Synthetic spectrum calculation in \textsc{NebulaPy}}
+\label{sec:nebulapy-spectrum}
+
+\textsc{NebulaPy} constructs an intrinsic, optically thin spectrum directly from
+the thermodynamic state and ion populations stored in a PION simulation.  The
+calculation combines bound--bound line emission, free--free emission
+(bremsstrahlung), free--bound emission (radiative recombination), and
+two-photon emission.  The atomic structure and much of the atomic emissivity
+physics are supplied by CHIANTI through \textsc{ChiantiPy}, whereas the mapping
+from PION variables to CHIANTI ions, the treatment of arbitrary non-equilibrium
+ion populations, the cell-by-cell normalisation, grid masking, volume
+integration, multiprocessing, and final spectral assembly are implemented in
+\textsc{NebulaPy}.  The result is a source luminosity spectrum per unit solid
+angle,
+\begin{equation}
+  \frac{\mathrm{d}L_\lambda}{\mathrm{d}\Omega}
+  \quad [\mathrm{erg\,s^{-1}\,sr^{-1}\,\mathring{A}^{-1}}] ,
+\end{equation}
+and is not a detector-folded count spectrum.  For isotropic emission, the
+angle-integrated luminosity is obtained by multiplying by $4\pi$.
+
+\subsection{Input plasma state and ion selection}
+
+For each simulation snapshot, the driver script reads the temperature
+$T_c$, mass density $\rho_c$, electron density $n_{\mathrm e,c}$, ion mass
+fractions $X_{Z,q,c}$, cell volumes $V_c$, and native nested-grid mask.  Here
+$c$ denotes a computational cell, $Z$ an element, and $q$ its ionic charge.
+The ion number density used by the spectrum calculation is evaluated by
+\textsc{NebulaPy} as
+\begin{equation}
+  n_{Z,q,c} = \frac{\rho_c X_{Z,q,c}}{m_Z},
+  \label{eq:ion-number-density}
+\end{equation}
+where $m_Z$ is the atomic mass used by the code.  If the highest ionisation
+stage is not stored as a separate tracer, its mass fraction is reconstructed
+as the elemental mass fraction minus the sum of the explicitly followed lower
+stages; small negative residuals are clipped to zero.  The electron density is
+calculated consistently from the charge-weighted ion mixture, with a small
+numerical floor applied where necessary.
+
+PION ion labels such as \texttt{O6+} are translated by \textsc{NebulaPy} to
+CHIANTI notation such as \texttt{o\_7}.  The \textsc{ChiantiPy}
+\texttt{specTrails.ionGate} machinery is then used to discover which ions and
+radiative processes are available in the CHIANTI database.  The user may
+request a restricted ion list or all available ions belonging to the selected
+elements.  In the latter case, the snapshot driver obtains all corresponding
+ion-density fields from PION before spectral synthesis.
+
+The emitting domain can be restricted without altering the underlying
+simulation data.  In the example X-ray workflow, \textsc{NebulaPy} reloads the
+native grid mask for every snapshot and sets it to zero outside
+$10^6\leq T/\mathrm{K}\leq10^9$.  Defining the resulting multiplicative mask as
+$M_c$, a value of zero excludes a cell, unity includes it completely, and a
+fractional value acts as a filling factor.  Independently of this user filter,
+the spectrum kernel accepts coefficients only for
+$10^2\leq T/\mathrm{K}\leq10^9$.
+
+\subsection{Wavelength grid}
+
+The spectral interval may be given either as wavelength bounds or as photon
+energy bounds.  Energy bounds are converted using
+\begin{equation}
+  \lambda\,[\mathring{\mathrm A}]
+  = \frac{12.39841984}{E\,[\mathrm{keV}]},
+\end{equation}
+with the order of the endpoints reversed because energy and wavelength are
+inversely related.  Two wavelength grids are supported.  A uniform user grid
+contains a prescribed number of equally spaced points between the limits.  The
+alternative grid is constructed by querying the CHIANTI transition wavelengths
+of every selected line-emitting ion, retaining wavelengths inside the requested
+interval, adding the exact endpoints, removing duplicates, and sorting the
+result.  All ions and all emission mechanisms are evaluated on this common
+grid.
+
+\subsection{Local emissivity coefficients}
+
+For compactness, let
+$C^{(p)}_{Z,q}(\lambda;T_c,n_{\mathrm e,c})$ denote the coefficient returned
+for process $p$.  \textsc{NebulaPy} deliberately prevents CHIANTI from applying
+an elemental abundance or a collisional-ionisation-equilibrium (CIE) fraction;
+these factors are instead represented by the physical ion density in
+Equation~\eqref{eq:ion-number-density}.  The cell contribution for the
+continuum and the density-normalised line coefficients can therefore be
+written as
+\begin{equation}
+  \left.\frac{\mathrm dL_\lambda}{\mathrm d\Omega}\right|_c
+  = M_c V_c n_{\mathrm e,c}
+    \sum_{Z,q}\sum_p n_{Z,q,c}
+    C^{(p)}_{Z,q}(\lambda;T_c,n_{\mathrm e,c}).
+  \label{eq:cell-spectrum}
+\end{equation}
+The implementation forms the weight
+$w_c=M_cV_cn_{\mathrm e,c}$, multiplies it by the relevant ion density, and
+contracts the cell axis with the coefficient matrix using a vectorised tensor
+operation.  This is mathematically equivalent to an emission-measure
+integration but avoids constructing an intermediate, temperature-binned
+differential emission measure.
+
+\paragraph{Free--free emission.}
+The continuum object and free--free Gaunt factors are obtained from
+\textsc{ChiantiPy}.  Specifically, the Itoh Gaunt factor is used where defined
+and the Sutherland value replaces any undefined Itoh entries.  The surrounding
+coefficient calculation is implemented in \textsc{NebulaPy}.  For an ion of
+charge $q$, its wavelength dependence has the form
+\begin{equation}
+  C^{(\mathrm{ff})}_{Z,q}(\lambda,T)
+  = A_{\mathrm{ff}}\,
+    \frac{q^2}{T^{1/2}\lambda^2}
+    \exp\!\left(-\frac{hc}{\lambda k_{\mathrm B}T}\right)
+    g_{\mathrm{ff}}(\lambda,T),
+  \label{eq:free-free}
+\end{equation}
+where $A_{\mathrm{ff}}$ is assembled in \textsc{NebulaPy} from the physical
+constants in the code.  This coefficient is multiplied by
+$n_{\mathrm e}n_{Z,q}V$ in Equation~\eqref{eq:cell-spectrum}.
+
+\paragraph{Free--bound emission.}
+The free--bound coefficient is taken from
+\textsc{ChiantiPy}'s \texttt{continuum.freeBound} calculation.  This uses the
+CHIANTI free-bound level data, Verner photoionisation cross sections for the
+ground-state contribution (when enabled), and Karzas--Latter Gaunt factors for
+excited levels.  \textsc{NebulaPy} calls it with
+\texttt{includeAbund=False}, \texttt{includeIoneq=False}, and no supplied
+emission measure.  Thus neither a database abundance nor a CHIANTI CIE ion
+fraction is folded into the returned spectrum.  In the current implementation,
+the returned coefficient for a selected CHIANTI ion is weighted by the electron
+density and the number density carrying the same ion label in the PION--CHIANTI
+mapping.  This convention should be stated when comparing the result with codes
+that label a recombination continuum by the recombining parent ion rather than
+the target ion.
+
+\paragraph{Line emission.}
+Level populations and transition emissivities are evaluated by
+\textsc{ChiantiPy}'s \texttt{ion.emiss} routine.  Its line power includes the
+photon energy and $1/(4\pi)$ solid-angle factor and excludes elemental abundance
+and ionisation fraction.  Because the CHIANTI line emissivity returned at this
+stage contains the electron-density dependence used in solving the statistical
+equilibrium populations, \textsc{NebulaPy} divides it by the supplied
+$n_{\mathrm e}$ (subject to the numerical density floor) before applying the
+common $n_{\mathrm e}n_{Z,q}V$ weight in
+Equation~\eqref{eq:cell-spectrum}.  This prevents the electron density from
+being counted twice.
+
+Each discrete line of rest wavelength $\lambda_0$ and integrated power
+$\epsilon_{ul}$ is distributed on the wavelength grid using a profile
+$\phi(\lambda;\lambda_0)$ normalised so that
+\begin{equation}
+  \int\phi(\lambda;\lambda_0)\,\mathrm d\lambda=1,
+  \qquad
+  C^{(\mathrm{line})}(\lambda)
+  =\sum_{u>l}\epsilon_{ul}\phi(\lambda;\lambda_{ul}).
+\end{equation}
+By default, the profile is \textsc{ChiantiPy}'s
+\texttt{filters.gaussianR}; \textsc{NebulaPy} chooses a grid-aware resolving
+factor, capped at $10^4$, so that the narrowest selected line is sampled by
+approximately five grid intervals across its full width at half maximum.
+Alternatively, the new \textsc{NebulaPy} global-profile implementation applies
+a bulk Doppler shift and combines instrumental and velocity broadening.  For
+the classical Doppler option,
+\begin{align}
+  \lambda_{\rm c} &= \lambda_0\left(1+\frac{v}{c}\right),\\
+  \sigma_{\rm inst} &=
+    \frac{\lambda_{\rm c}}{2\sqrt{2\ln2}\,R},\\
+  \sigma_v &= \lambda_{\rm c}\frac{\sigma_{v,\rm los}}{c},\\
+  \sigma_\lambda &=
+    \left(\sigma_{\rm inst}^2+\sigma_v^2\right)^{1/2}.
+\end{align}
+The relativistic longitudinal Doppler factor may be selected instead.  The WR
+140 example uses $v=-1365\,\mathrm{km\,s^{-1}}$,
+$\sigma_{v,\rm los}=578\,\mathrm{km\,s^{-1}}$, and no instrumental broadening
+($R=0$).
+
+\paragraph{Two-photon emission.}
+Two-photon emission is evaluated only for non-dielectronic H-like and He-like
+ions for which the requested wavelength grid extends beyond the appropriate
+transition threshold.  Atomic levels and the spectral emissivity are supplied
+by \textsc{ChiantiPy}'s \texttt{ion.twoPhotonEmiss}.  Since that routine does
+not use the same per-steradian normalisation as the other selected outputs,
+\textsc{NebulaPy} divides its result by $4\pi$ before adding it to the spectrum.
+
+\subsection{Non-equilibrium ionisation spectrum}
+
+The distinction between an equilibrium and a non-equilibrium spectrum enters
+through the ion populations, not through a different atomic emissivity solver.
+For CIE synthesis one would write
+\begin{equation}
+  n^{\rm CIE}_{Z,q,c}
+  = n_{Z,c}\,f^{\rm CIE}_{Z,q}(T_c),
+\end{equation}
+where the ion fraction $f^{\rm CIE}_{Z,q}$ is a single-valued function of the
+local temperature (for a specified equilibrium model).  In the non-equilibrium
+ionisation (NEI) workflow, \textsc{NebulaPy} instead reads the instantaneous,
+advected ion mass fractions evolved by the PION/NEMO simulation and converts
+them to $n^{\rm NEI}_{Z,q,c}$ using Equation~\eqref{eq:ion-number-density}.  It
+then evaluates the same CHIANTI atomic coefficients at the local $T_c$ and
+$n_{\mathrm e,c}$ but weights them by these simulation ion densities:
+\begin{equation}
+  \frac{\mathrm dL^{\rm NEI}_\lambda}{\mathrm d\Omega}
+  = \sum_c M_cV_cn_{\mathrm e,c}
+    \sum_{Z,q}n^{\rm NEI}_{Z,q,c}
+    \sum_p C^{(p)}_{Z,q}(\lambda;T_c,n_{\mathrm e,c}).
+  \label{eq:nei-spectrum}
+\end{equation}
+Consequently, two cells with the same present-day temperature and density may
+emit different spectra if their thermal and ionisation histories have produced
+different ion fractions.  This permits under-ionised gas behind a rapidly
+heated shock and over-ionised gas in a rapidly cooling flow to be represented
+without forcing the charge-state distribution back to CIE.  Importantly, the
+\textsc{NebulaPy} spectrum module does \emph{not} itself integrate the
+time-dependent ionisation and recombination rate equations.  That evolution is
+performed by the simulation; spectral synthesis is a post-processing step that
+preserves the resulting NEI populations.  Setting
+\texttt{includeIoneq=False} in the CHIANTI continuum call and using
+\texttt{ion.emiss}, which does not apply an ionisation fraction, are therefore
+essential: applying the CHIANTI equilibrium fraction as well would erase or
+double-weight the simulated non-equilibrium charge-state information.
+
+\subsection{Parallel integration and output representation}
+
+For a two-dimensional nested grid, one complete row at one refinement level is
+submitted as a multiprocessing task.  Within a worker, CHIANTI evaluates all
+cells of the row vectorially.  Each process coefficient is immediately
+multiplied by $M_cV_cn_{\mathrm e,c}n_{Z,q,c}$ and summed over the row.  Only
+one ion-by-wavelength vector per row is returned to the parent process, which
+reduces inter-process communication and avoids retaining cell-resolved spectral
+cubes.  The parent accumulates rows, then ions, to produce the one-dimensional
+array in Equation~\eqref{eq:nei-spectrum}.
+
+The native output is stored on the increasing wavelength grid as
+$\mathrm dL_\lambda/\mathrm d\Omega$.  The example driver also supports energy
+and photon-number representations.  With
+$E=K/\lambda$, $K=12.39841984\,\mathrm{keV\,\mathring A}$, and
+$1\,\mathrm{keV}=1.602176634\times10^{-9}\,\mathrm{erg}$,
+\begin{align}
+  \frac{\mathrm dL_E}{\mathrm d\Omega}
+    &= \frac{\mathrm dL_\lambda}{\mathrm d\Omega}
+       \left|\frac{\mathrm d\lambda}{\mathrm dE}\right|
+     = \frac{\mathrm dL_\lambda}{\mathrm d\Omega}\frac{K}{E^2},\\
+  \frac{\mathrm dN_E}{\mathrm d\Omega}
+    &= \frac{1}{E\,(1.602176634\times10^{-9})}
+       \frac{\mathrm dL_E}{\mathrm d\Omega}.
+\end{align}
+When plotted against energy the arrays are reordered so that the horizontal
+axis increases, but this plotting transformation does not change the stored
+wavelength-space spectrum.
+
+\subsection{Division of responsibility between \textsc{ChiantiPy} and
+\textsc{NebulaPy}}
+
+In summary, the CHIANTI database and \textsc{ChiantiPy} supply the atomic level
+and transition data, ion metadata and process availability, statistical-
+equilibrium line populations and line powers, free-bound continuum physics,
+free--free Gaunt factors, two-photon emissivities, and the default Gaussian
+line-filter function.  \textsc{NebulaPy} supplies the PION-to-CHIANTI naming
+interface; extraction and reconstruction of simulation ion densities; explicit
+removal of CHIANTI abundance and CIE-fraction weighting; the free--free
+coefficient assembly around the CHIANTI Gaunt factors; wavelength-grid
+construction; line selection and summation; the optional bulk-shift and global
+broadening model; cell masks, volumes, and temperature cuts; the NEI
+normalisation by the simulation charge-state densities; row-wise parallel
+reduction; summation over ions and processes; and conversion to the requested
+plotting representation.

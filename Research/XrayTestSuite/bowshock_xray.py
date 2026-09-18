@@ -18,33 +18,7 @@ cm2au = 6.68459e-14  # cm to au conversion factor
 x_axis = "wavelength"  # Options: "wavelength" or "energy"
 y_axis = "photon_per_energy"  # See plotting options below
 
-'''
-# Colliding wind binaries
-#Razer Blade -> Set up paths and filenames
-OutputDir = '/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum'  # Output image directory
-SiloDir = '/home/tony/Desktop/CWBs-2026/Silo-n128'  # Directory containing silo files
-Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
-start_time = 1.24e6  # in sec
-finish_time = None
-time_unit = 'sec'
-out_frequency = None
-SimulationName = "CWB"
-'''
 
-
-# Colliding wind binaries
-#Macbook -> Set up paths and filenames
-OutputDir = '/Users/tony/Desktop/CWBs-NEMOv1/Post-Processing/WR140Test'  # Output image directory
-SiloDir = '/Users/tony/Desktop/CWBs-WR140/Silo-n128'  # Directory containing silo files
-Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
-start_time = 14.35  # days
-finish_time = None
-time_unit = 'days'
-out_frequency = None
-SimulationName = "WR140"
-
-
-'''
 # Bowshock
 #Macbook -> Set up paths and filenames
 OutputDir = '/Users/tony/Desktop/Bowshock-Xray/Post-Processing/XraySpecTest2'  # Output image directory
@@ -55,34 +29,9 @@ finish_time = None
 time_unit = 'kyr'
 out_frequency = None
 SimulationName = "Bowshock"
-'''
-
-# edit here for Mimir
-'''
-#MIMIR -> Set up paths and filenames
-OutputDir = ''  # Output image directory
-SiloDir = ''  # Directory containing silo files
-Filebase = 'wr140_NEMO_d07e13_d2l6n128'  # Base name of the silo files
-start_time = 1.24e6  # in sec
-finish_time = None
-time_unit = 'sec'
-out_frequency = None
-SimulationName = "CWB"
-'''
 
 
-# Bowshock
-'''
-#Razer Blade -> Set up paths and filenames
-OutputDir = '/home/tony/Desktop/CWBs-2026/Postprocessing/X-raySpectrum'  # Output image directory
-SiloDir = '/home/tony/Desktop/multi-ion-bowshock/sim-output/silo'  # Directory containing silo files
-Filebase = 'Ostar_mhd-nemo-dep_d2n0128l3'  # Base name of the silo files
-start_time = 161  # in kyr
-finish_time = 161.5
-time_unit = 'kyr'
-out_frequency = None
-SimulationName = "Bowshock_FF"
-'''
+
 
 def main():
     """Generate spectra without re-running this workflow in spawned workers."""
@@ -124,18 +73,6 @@ def main():
     N_grid = pion.geometry_container['Ngrid']
     grid_volume = pion.get_grid_volumes_2D()
     #grid_mask = pion.geometry_container['mask']
-
-
-    print(" mesh max ", mesh_edges_min)
-    print(" mesh min ", mesh_edges_max)
-    pion.restrict_grid_levels(min_level=2)
-    mesh_edges_min = pion.geometry_container['edges_min']
-    mesh_edges_max = pion.geometry_container['edges_max']
-    print(" mesh max ", mesh_edges_min)
-    print(" mesh min ", mesh_edges_max)
-
-    exit(1)
-
 
     # loading chemistry container for pion simulation data
     nemo.load_chemistry()
