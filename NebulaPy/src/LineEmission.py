@@ -413,8 +413,98 @@ class line_emission():
         return result
 
     ######################################################################################
-    # line luminosity for a given list of lines in 2D coordinate system
+    # line luminosity distribution of a given list of lines in 2D coordinate system
     ######################################################################################
+    def line_luminosity_map_2D(
+            self, lines, temperature, ne, species_density, cell_volume,
+            grid_mask, progress_bar=True):
+        """Return per-cell line luminosities for an axisymmetric 2D grid.
+
+        ``lines`` contains CHIANTI wavelengths in Angstrom. The remaining
+        inputs are sequences of 2D arrays, one per grid level, with matching
+        shapes within each level. Different levels may have different shapes.
+        Temperature is in K, ``ne`` and ``species_density`` are in cm^-3,
+        and ``cell_volume`` is in cm^3 for the full cylindrical annulus.
+        Active cells require positive temperature and electron density;
+        NEMO.get_ne supplies the electron-density floor.
+
+        The grid mask contains 0 or 1: zero excludes a cell before CHIANTI
+        is called, and one includes it. Inputs are not modified.
+
+        Returns a dictionary keyed by spectroscopic line labels, each holding
+        a list of float64 arrays in erg/s per cell, in input level order.
+        Excluded cells (including entirely excluded levels) remain zero.
+        These are intrinsic cell luminosities, not projected surface brightness.
+        """
+        lines = list(lines)
+        fields = {
+            'temperature': temperature, 'ne': ne,
+            'species_density': species_density, 'cell_volume': cell_volume,
+            'grid_mask': grid_mask,
+        }
+        nlevels = len(temperature)
+        for name, values in fields.items():
+            if len(values) != nlevels:
+                raise ValueError(f'{name} must have {nlevels} grid levels')
+
+        levels = []
+        for level in range(nlevels):
+            arrays = {name: np.asarray(values[level])
+                      for name, values in fields.items()}
+            shape = arrays['temperature'].shape
+            if len(shape) != 2:
+                raise ValueError(f'temperature at level {level} must be 2D')
+
+            for name, array in arrays.items():
+                if array.shape != shape:
+                    raise ValueError(
+                        f'{name} at level {level} must have shape {shape}')
+
+            mask = arrays['grid_mask']
+            active = mask != 0
+            for name in ('temperature', 'ne', 'species_density', 'cell_volume'):
+                values = arrays[name][active]
+                invalid = values <= 0 if name in ('temperature', 'ne') else values < 0
+                if not np.all(np.isfinite(values)) or np.any(invalid):
+                    raise ValueError(f'invalid active {name} at level {level}')
+            levels.append(arrays)
+
+        symbol = get_spectroscopic_symbol(self.ion)
+        maps = {
+            f'{symbol} {line}': [np.zeros(a['temperature'].shape, dtype=np.float64)
+                                for a in levels]
+            for line in lines
+        }
+        if not lines:
+            return maps
+
+        for level, arrays in enumerate(levels):
+            rows = arrays['temperature'].shape[0]
+            for row in range(rows):
+                mask_row = arrays['grid_mask'][row]
+                active = mask_row != 0
+                if np.any(active):
+                    species = chianti(
+                        pion_ion=self.ion,
+                        temperature=arrays['temperature'][row][active],
+                        ne=arrays['ne'][row][active],
+                    )
+                    emissivities = species.get_line_emissivity_for_list(lines)
+                    for key, emissivity in emissivities.items():
+                        maps[key][level][row, active] = (
+                            4.0 * const.PI * np.asarray(emissivity)
+                            * arrays['species_density'][row][active]
+                            * arrays['cell_volume'][row][active]
+                        )
+                    del species
+                if progress_bar:
+                    message = f'computing luminosity maps of {self.ion} lines at grid-level {level}'
+                    update_progress(
+                        key=message, description=message,
+                        completed=row + 1, total=rows, unit='rows',
+                    )
+        return maps
+
     def line_luminosity_2D(self, lines, temperature, ne, species_density, cell_volume, grid_mask, progress_bar=True):
         """
         Compute the total line luminosity for a given ion in a cylindrical coordinate system.
@@ -422,7 +512,8 @@ class line_emission():
         Parameters:
         - lines: List of emission lines for which luminosity is calculated.
         - temperature: 3D array (NGlevel x rows x columns) containing temperature values at different grid levels.
-        - ne: 3D array (NGlevel x rows x columns) containing electron density values at different grid levels.
+        - ne: 3D array (NGlevel x rows x columns) containing positive electron densities.
+          NEMO.get_ne applies the numerical density floor before this method is called.
         - species_density: 3D array containing the density of the species (ion) at different grid points.
         - cell_volume: 3D array containing the volume of each cell in the grid.
         - grid_mask: 3D array (boolean or numeric) acting as a mask to include/exclude specific grid cells.
@@ -431,13 +522,9 @@ class line_emission():
         - Dictionary mapping emission lines to their computed luminosity values.
 
         The function follows these steps:
-        1. Ensures that electron densities are nonzero to avoid division errors.
-        2. Iterates over grid levels and rows to compute line emissivity using Chianti.
-        3. Computes and accumulates total line luminosity across the cylindrical grid.
+        1. Iterates over grid levels and rows to compute line emissivity using Chianti.
+        2. Computes and accumulates total line luminosity across the cylindrical grid.
         """
-
-        # Define a small tolerance value to prevent division errors when electron density is zero
-        electron_tolerance = const.ELECTRON_DENSITY_FLOOR
 
         # Get the number of grid levels (assumed to be the first dimension of the temperature array)
         NGlevel = len(temperature)
@@ -450,10 +537,6 @@ class line_emission():
 
         # Loop through each level in the grid
         for level in range(NGlevel):
-            # Convert electron density to an array (if not already) and ensure no zero values
-            ne[level] = np.array(ne[level])
-            ne[level][ne[level] == 0] = electron_tolerance
-
             # Initialize an array to store line luminosity for this level
             lines_luminosity_level = np.zeros_like(lines)
 
@@ -567,7 +650,7 @@ class line_emission():
         return lines_emissivity_map
 
 
-######################################################################################
+    ######################################################################################
     # line luminosity for a given list of lines in 2D coordinate system
     ######################################################################################
     def recombination_line_luminosity_2D(self, lines, temperature, ne, species_density, cell_volume,

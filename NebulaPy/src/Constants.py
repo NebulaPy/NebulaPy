@@ -24,7 +24,7 @@ PETAHERTZ_TO_HERTZ = 1.0e15
 JANSKY_TO_CGS_FLUX_DENSITY = 1.0e-23  # erg s^-1 cm^-2 Hz^-1
 
 # Shared numerical safeguards
-ELECTRON_DENSITY_FLOOR = 1.0e-8  # cm^-3
+ELECTRON_DENSITY_FLOOR = 1.0e-12  # cm^-3
 
 # Astronomical reference values
 SOLAR_RADIUS = 6.955e10  # cm
