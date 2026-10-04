@@ -8,6 +8,10 @@ multiprocessing helpers for large two-dimensional PION datasets.
 from .Chianti import chianti
 import numpy as np
 import copy
+from io import StringIO
+from rich import box
+from rich.console import Console
+from rich.table import Table
 from .PyNeb import pyneb
 import multiprocessing
 from multiprocessing import Pool, Manager
@@ -35,21 +39,60 @@ class line_emission():
     ######################################################################################
     # check the line list exist in all lines of the species
     ######################################################################################
-    def chianti_line_batch_check(self, lines):
+    def validate_chianti_lines(self, lines):
+        """Validate exact wavelengths and tabulate the three nearest wavelengths on failure."""
 
         # Retrieve the list of possible emission lines for the species
-        dummy_temperature_array = [1000]
+        dummy_temperature_array = [1000.0]
         dummy_ne_array = [1.0]
         ion = chianti(pion_ion=self.ion, temperature=dummy_temperature_array, ne=dummy_ne_array)
         spectroscopic_name = ion.chianti_ion.Spectroscopic
-        all_lines = ion.get_line_emissivity(allLines=True)['wvl']
-        del ion
+        emissivity = ion.get_line_emissivity(allLines=True)
+        all_lines = np.asarray(emissivity['wvl'], dtype=float)
 
         missing_line = [line for line in lines if line not in all_lines]
         if missing_line:
+            transitions = ion.get_allLineTransitions()
+            transition_wavelengths = np.asarray(transitions['wvl'], dtype=float)
             missing_line_str = ", ".join(map(str, missing_line))
+            available_lines = np.unique(np.asarray(all_lines, dtype=float))
+            available_lines = available_lines[np.isfinite(available_lines)]
+            suggestions = []
+            for line in missing_line:
+                nearest = available_lines[
+                    np.argsort(np.abs(available_lines - line), kind='stable')[:3]
+                ]
+                table = Table(
+                    title=f"{spectroscopic_name}: nearest lines to {line}",
+                    title_justify="left",
+                    caption="Wavelengths use the same units as requested. Levels are CHIANTI labels.",
+                    box=box.SIMPLE_HEAD,
+                    show_edge=False,
+                    pad_edge=False,
+                )
+                for heading in ("Wavelength", "A-value (s^-1)", "Upper level", "Lower level"):
+                    table.add_column(heading, justify="right" if heading in (
+                        "Wavelength", "A-value (s^-1)"
+                    ) else "left")
+                # Keep every transition at each selected wavelength, so blended
+                # lines retain their own A-values and level assignments.
+                for wavelength in nearest:
+                    for index in np.flatnonzero(transition_wavelengths == wavelength):
+                        table.add_row(
+                            str(wavelength),
+                            f"{transitions['Avalue'][index]:.6e}",
+                            str(transitions['Upper'][index]),
+                            str(transitions['Lower'][index]),
+                        )
+                if not nearest.size:
+                    table.add_row("none available", "—", "—", "—")
+                output = StringIO()
+                Console(file=output, width=120, color_system=None).print(table)
+                suggestions.append(output.getvalue().rstrip())
             raise NebulaError(f"Requested line(s) {spectroscopic_name} {missing_line_str} not "
-                                        f"found in the CHIANTI database")
+                             f"found in the CHIANTI database. "
+                             f"Nearest transitions (upper → lower):\n"
+                             + "\n\n".join(suggestions))
         else:
             logger.info("Requested %s lines found in the CHIANTI database", spectroscopic_name)
 
@@ -57,7 +100,7 @@ class line_emission():
     ######################################################################################
     # check the line list exist in pyneb database
     ######################################################################################
-    def pyneb_line_batch_check(self, lines):
+    def validate_pyneb_lines(self, lines):
         logger.warning("Line check not implemented for PyNeb")
 
     ######################################################################################

@@ -260,11 +260,11 @@ if __name__ == "__main__":
         # Initialise emission object
         le = nebula.line_emission(ion)
         # availability check (if applicable)
-        #if hasattr(le, "chianti_line_batch_check"):
+        #if hasattr(le, "validate_chianti_lines"):
         #    if ion == 'H':
-        #        le.pyneb_line_batch_check(lines)
+        #        le.validate_pyneb_lines(lines)
         #    else:
-        #        le.chianti_line_batch_check(lines)
+        #        le.validate_chianti_lines(lines)
 
         # Store for later luminosity / time-evolution calculations
         line_emission_objects[ion] = le

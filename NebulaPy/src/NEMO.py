@@ -330,7 +330,7 @@ class NEMO:
     ######################################################################################
     # check if the ion exist in pion simulation file
     ######################################################################################
-    def ion_batch_check(self, ion=None, ion_list=None, top_ion_check=False, terminate=False):
+    def validate_ions(self, ion=None, ion_list=None, top_ion_check=False, terminate=False):
         """
         This method checks if the given ion(s) are valid according to the chemistry model and optional top-level ion conditions.
         It allows for checking a single ion or a list of ions, and can either raise an exception or print warnings when ions are invalid.

@@ -217,13 +217,13 @@ if __name__ == "__main__":
     # Check the requested lines in the database for each ion
     print(f" ---------------------------")
     print(f" checking requested lines in CHIANTI database:")
-    line_emission.chianti_line_batch_check(Chianti_HAlphaLines)
-    line_emission.chianti_line_batch_check(Chianti_HBetaLines)
+    line_emission.validate_chianti_lines(Chianti_HAlphaLines)
+    line_emission.validate_chianti_lines(Chianti_HBetaLines)
 
     print(f" ---------------------------")
     print(f" checking requested lines in PyNeb database:")
-    line_emission.pyneb_line_batch_check(PyNeb_HAlphaLines)
-    line_emission.pyneb_line_batch_check(PyNeb_HBetaLines)
+    line_emission.validate_pyneb_lines(PyNeb_HAlphaLines)
+    line_emission.validate_pyneb_lines(PyNeb_HBetaLines)
 
     # Get geometry information
     geometry = pion.geometry_container

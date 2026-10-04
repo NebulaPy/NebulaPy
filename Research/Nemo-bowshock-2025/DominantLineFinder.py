@@ -84,7 +84,7 @@ print(f" ---------------------------")
 print(" task: identifying dominant spectral lines for the given ions")
 
 # Check if the listed ions are present in the simulation chemistry container
-ion_list = nemo.ion_batch_check(ion_list=ion_list, top_ion_check=True, terminate=False)
+ion_list = nemo.validate_ions(ion_list=ion_list, top_ion_check=True, terminate=False)
 
 # Prepare output file for results
 outfile = os.path.join(output_dir, filename)

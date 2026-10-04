@@ -518,6 +518,36 @@ class pion():
 
 
     ######################################################################################
+    # get velocity magnitude
+    ######################################################################################
+    def get_velocity_magnitude(self, silo_instant):
+        """Return the speed in each cell, in cm/s for CGS PION outputs.
+
+        Uses all three stored velocity components (VelocityX, VelocityY,
+        VelocityZ), including the third component in axisymmetric data.
+        Geometry plotting scale does not change the velocity units.
+
+        Returns the same grid layout as get_parameter: a list of 2D arrays
+        for cylindrical grids, or the merged 1D array for spherical grids.
+        Selected grid levels and mask handling follow get_parameter; 2D
+        cells are not masked here. Input velocity arrays are not modified.
+        """
+        coordinate_sys = self.geometry_container['coordinate_sys']
+        if coordinate_sys not in ('spherical', 'cylindrical'):
+            raise NotImplementedError(
+                f'Velocity magnitude is not implemented for {coordinate_sys} grids')
+
+        vx = self.get_parameter('VelocityX', silo_instant)
+        vy = self.get_parameter('VelocityY', silo_instant)
+        vz = self.get_parameter('VelocityZ', silo_instant)
+
+        if coordinate_sys == 'spherical':
+            return np.hypot(np.hypot(vx, vy), vz)
+
+        return [np.hypot(np.hypot(vx[level], vy[level]), vz[level])
+                for level in range(len(vx))]
+
+    ######################################################################################
     # get parameter //todo: this is not clear
     ######################################################################################
     def get_parameter(self, parameter, silo_instant):

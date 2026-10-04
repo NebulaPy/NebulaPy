@@ -20,8 +20,8 @@ out_frequency = None
 SimulationName = 'Bowshock'
 
 # Edit the ion and CHIANTI wavelengths (Angstrom) as needed.
-pion_ion = 'C2+'
-lines = [977.02]
+pion_ion = "O5+"
+lines = [1031.912]
 
 # Colour limits for log10(cell luminosity / (erg/s)).
 # Leave either limit as None to determine it from each map.
