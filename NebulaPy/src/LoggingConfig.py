@@ -52,6 +52,15 @@ class _ConsoleRecordFilter(logging.Filter):
     """Exclude records intended only for the detailed log file."""
 
     def filter(self, record: logging.LogRecord) -> bool:
+        # Module loggers identify the owning component without inspecting frames.
+        source = record.name.rsplit(".", 1)[-1]
+        record.source = {"LineEmission": "LINE_EMISSION"}.get(source, source.upper())
+        if record.name.startswith("NebulaPy.src."):
+            record.source_label = f"[NEBULAPY][{record.source}] "
+        elif record.name == LOGGER_NAME:
+            record.source_label = "[NEBULAPY] "
+        else:
+            record.source_label = ""
         return not getattr(record, "nebulapy_file_only", False)
 
 
@@ -141,7 +150,7 @@ def configure_logging(
         console_handler._nebulapy_handler = True
         console_handler.setLevel(console_level)
         console_handler.addFilter(_ConsoleRecordFilter())
-        console_handler.setFormatter(logging.Formatter("%(message)s"))
+        console_handler.setFormatter(logging.Formatter("%(source_label)s%(message)s"))
         logger.addHandler(console_handler)
 
     if destination is not None:

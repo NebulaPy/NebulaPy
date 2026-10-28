@@ -94,7 +94,10 @@ class line_emission():
                              f"Nearest transitions (upper → lower):\n"
                              + "\n\n".join(suggestions))
         else:
-            logger.info("Requested %s lines found in the CHIANTI database", spectroscopic_name)
+            logger.info(
+                "CHIANTI validation passed: %-8s | %3d lines",
+                spectroscopic_name, len(lines),
+            )
 
 
     ######################################################################################

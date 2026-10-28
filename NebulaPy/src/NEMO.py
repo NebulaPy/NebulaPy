@@ -388,7 +388,7 @@ class NEMO:
                     logger.warning(f"Ion '{ion}' not recognized")
 
             if found_ion:
-                logger.debug("Ion check: %s found in chemistry container", ion)
+                logger.info("ION validation passed: %-5s | available in chemistry model", ion)
 
             return filtered_ion_list
 
@@ -425,7 +425,7 @@ class NEMO:
                         logger.warning(f"Ion '{ion}' not recognized")
 
                 if found_ion:
-                    logger.debug("Ion check: %s found in chemistry container", ion)
+                    logger.info("ION validation passed: %-5s | available in chemistry model", ion)
 
             return filtered_ion_list
 
