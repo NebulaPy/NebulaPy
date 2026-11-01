@@ -97,7 +97,10 @@ class cooling():
         ion_cooling_data = np.power(10, ion_cooling_log_data)
 
         # Create an interpolation function for cooling rate as a function of electron density and temperature
-        self.cooling_rate = interpolate.interp2d(nemo_ne, nemo_temperature, ion_cooling_data, kind='linear')
+        # RectBivariateSpline replaces removed interp2d with the same linear grid interpolation.
+        self.cooling_rate = interpolate.RectBivariateSpline(
+            nemo_ne, nemo_temperature, np.asarray(ion_cooling_data).T, kx=1, ky=1, s=0
+        )
 
     ######################################################################################
     # generate species chianti symbol
@@ -181,7 +184,7 @@ class cooling():
             temp_value = temperature[indices]
 
             # Interpolate the cooling rate for the current temperature and electron density
-            cooling_rate_map[indices] = self.cooling_rate(ne_value, temp_value)
+            cooling_rate_map[indices] = self.cooling_rate(ne_value, temp_value).item()
 
         # Return the map of cooling rates
         cooling_rate_map[cooling_rate_map < 1e-50] = 1e-50
