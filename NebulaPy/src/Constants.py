@@ -9,7 +9,7 @@ the elements and stellar-atmosphere grids currently supported by NebulaPy.
 PI = 3.1415926535897931
 PLANCK_CONSTANT = 6.6260693e-27  # erg s
 SPEED_OF_LIGHT = 2.99792458e10  # cm s^-1
-BOLTZMANN_CONSTANT = 1.3806504e-16  # erg K^-1
+BOLTZMANN_CONSTANT = 1.38064852e-16 # erg K^-1
 FINE_STRUCTURE_CONSTANT = 7.2973525376e-3
 ELECTRON_MASS = 9.10938215e-28  # g
 STEFAN_BOLTZMANN_CONSTANT = 5.670373e-5  # erg cm^-2 s^-1 K^-4
@@ -35,26 +35,26 @@ SUPPORTED_ELEMENTS = ("H", "He", "C", "N", "O", "Ne", "Si", "S", "Fe")
 
 # Atomic masses in grams
 ATOMIC_MASS = {
-    "H": 1.6738e-24,
+    "H":  1.6738e-24,
     "He": 6.6464768e-24,
-    "C": 1.994374e-23,
-    "N": 2.325892e-23,
-    "O": 2.6567628e-23,
+    "C":  1.994374e-23,
+    "N":  2.325892e-23,
+    "O":  2.6567628e-23,
     "Ne": 3.3509177e-23,
     "Si": 4.6637066e-23,
-    "S": 5.3245181e-23,
+    "S":  5.3245181e-23,
     "Fe": 9.2732796e-23,
 }
 
 ATOMIC_NUMBER = {
-    "H": 1,
+    "H":  1,
     "He": 2,
-    "C": 6,
-    "N": 7,
-    "O": 8,
+    "C":  6,
+    "N":  7,
+    "O":  8,
     "Ne": 10,
     "Si": 14,
-    "S": 16,
+    "S":  16,
     "Fe": 26,
 }
 
